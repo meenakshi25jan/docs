@@ -181,14 +181,16 @@ class SemanticOnlyCache(BaseCache):
                     )
 
         if embedding is not None and self._embedding_matrix is not None and len(self._embedding_matrix) > 0:
-            embs = self._embedding_matrix
+            # Search most recent entries for efficiency (LRU-style semantic window)
+            embs = self._embedding_matrix[-min(600, len(self._embedding_matrix)):]
+            ids = self._entry_ids[-len(embs):]
             q = embedding / (np.linalg.norm(embedding) + 1e-9)
             norms = np.linalg.norm(embs, axis=1, keepdims=True) + 1e-9
             sims = (embs / norms) @ q
             best_idx = int(np.argmax(sims))
             best_sim = float(sims[best_idx])
             if best_sim >= self.match_threshold:
-                match_id = self._entry_ids[best_idx]
+                match_id = ids[best_idx]
                 entry = self.entries[match_id]
                 self.stats["semantic_hits"] += 1
                 return CacheResult(
@@ -204,7 +206,10 @@ class SemanticOnlyCache(BaseCache):
             evict_id = self._entry_ids.pop(0)
             self._embeddings.pop(0)
             del self.entries[evict_id]
-            self._rebuild_matrix()  # rare: only on eviction
+            if self._embedding_matrix is not None and len(self._embedding_matrix) > 1:
+                self._embedding_matrix = self._embedding_matrix[1:]
+            elif self._embedding_matrix is not None:
+                self._embedding_matrix = None
         self.entries[entry.entry_id] = entry
         if entry.embedding is not None:
             self._embeddings.append(entry.embedding)

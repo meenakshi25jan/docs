@@ -116,15 +116,15 @@ class SimulationEngine:
                 if result.hit_type == "exact":
                     metrics.exact_hits += 1
                     token_save = req.prompt_tokens + int(req.output_tokens * 0.90)
-                    hit_cost_frac = 0.58
+                    hit_cost_frac = 0.62
                 elif result.hit_type == "semantic":
                     metrics.semantic_hits += 1
                     token_save = int(req.prompt_tokens * 0.65) + int(req.output_tokens * 0.72)
-                    hit_cost_frac = 0.65
+                    hit_cost_frac = 0.68
                 elif result.hit_type == "prompt":
                     metrics.prompt_hits += 1
                     token_save = int(req.prompt_tokens * 0.48) + int(req.output_tokens * 0.78)
-                    hit_cost_frac = 0.68
+                    hit_cost_frac = 0.72
                 else:
                     token_save = result.tokens_saved
                     hit_cost_frac = 0.25
