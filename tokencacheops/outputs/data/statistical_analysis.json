@@ -1,0 +1,518 @@
+{
+  "cache_hit_ratio": {
+    "metric": "cache_hit_ratio",
+    "anova": {
+      "f_statistic": 38425.69051728835,
+      "p_value": 5.226403895951754e-46
+    },
+    "summary": {
+      "Baseline-A (LRU)": {
+        "mean": 0.12956,
+        "median": 0.129,
+        "std": 0.002506591310924053,
+        "ci_95_low": 0.12644765581101525,
+        "ci_95_high": 0.13267234418898477,
+        "n": 5
+      },
+      "Baseline-B (LFU)": {
+        "mean": 0.21252,
+        "median": 0.2122,
+        "std": 0.0037572596396842147,
+        "ci_95_low": 0.20785474597350004,
+        "ci_95_high": 0.21718525402649994,
+        "n": 5
+      },
+      "Baseline-C (Semantic)": {
+        "mean": 0.51944,
+        "median": 0.519,
+        "std": 0.0030907927785602325,
+        "ci_95_low": 0.5156022738809536,
+        "ci_95_high": 0.5232777261190464,
+        "n": 5
+      },
+      "Baseline-D (Prompt)": {
+        "mean": 0.50356,
+        "median": 0.5028,
+        "std": 0.0028192197502145654,
+        "ci_95_low": 0.5000594763331335,
+        "ci_95_high": 0.5070605236668665,
+        "n": 5
+      },
+      "Baseline-E (No-Opt)": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "ci_95_low": 0.0,
+        "ci_95_high": 0.0,
+        "n": 5
+      },
+      "TokenCacheOps": {
+        "mean": 0.6639,
+        "median": 0.6639,
+        "std": 0.0038967935536797236,
+        "ci_95_low": 0.6590614917359634,
+        "ci_95_high": 0.6687385082640367,
+        "n": 5
+      }
+    },
+    "ttest_vs_reference": {
+      "Baseline-A (LRU)": {
+        "t_statistic": 257.87360699868213,
+        "p_value": 7.164075418674514e-15
+      },
+      "Baseline-B (LFU)": {
+        "t_statistic": 186.45699570780175,
+        "p_value": 7.970828821096984e-16
+      },
+      "Baseline-C (Semantic)": {
+        "t_statistic": 64.94568773898493,
+        "p_value": 1.022121916871681e-11
+      },
+      "Baseline-D (Prompt)": {
+        "t_statistic": 74.5436926555691,
+        "p_value": 8.966237076782058e-12
+      },
+      "Baseline-E (No-Opt)": {
+        "t_statistic": 380.9607847611738,
+        "p_value": 2.848460558774959e-10
+      }
+    },
+    "effect_sizes_vs_reference": {
+      "Baseline-A (LRU)": 163.09358931179455,
+      "Baseline-B (LFU)": 117.92575842177857,
+      "Baseline-C (Semantic)": 41.0752594922527,
+      "Baseline-D (Prompt)": 47.14557079823277,
+      "Baseline-E (No-Opt)": 240.9407558100948
+    }
+  },
+  "token_reduction_pct": {
+    "metric": "token_reduction_pct",
+    "anova": {
+      "f_statistic": 7555.516789345155,
+      "p_value": 1.5542733393878289e-37
+    },
+    "summary": {
+      "Baseline-A (LRU)": {
+        "mean": 12.201861037856048,
+        "median": 12.298811484773985,
+        "std": 0.287257772416136,
+        "ci_95_low": 11.845183403642721,
+        "ci_95_high": 12.558538672069375,
+        "n": 5
+      },
+      "Baseline-B (LFU)": {
+        "mean": 20.245661817527683,
+        "median": 20.152698105140058,
+        "std": 0.4339176167115186,
+        "ci_95_low": 19.706881934670612,
+        "ci_95_high": 20.784441700384754,
+        "n": 5
+      },
+      "Baseline-C (Semantic)": {
+        "mean": 37.38726427905457,
+        "median": 37.426898436149735,
+        "std": 0.38742097079934795,
+        "ci_95_low": 36.906217607463866,
+        "ci_95_high": 37.868310950645274,
+        "n": 5
+      },
+      "Baseline-D (Prompt)": {
+        "mean": 26.74187280308294,
+        "median": 26.63385571411047,
+        "std": 0.31601608971463696,
+        "ci_95_low": 26.349487001631147,
+        "ci_95_high": 27.134258604534736,
+        "n": 5
+      },
+      "Baseline-E (No-Opt)": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "ci_95_low": 0.0,
+        "ci_95_high": 0.0,
+        "n": 5
+      },
+      "TokenCacheOps": {
+        "mean": 53.864523333909446,
+        "median": 53.77784492553066,
+        "std": 0.9536523149374372,
+        "ci_95_low": 52.680407587647956,
+        "ci_95_high": 55.048639080170936,
+        "n": 5
+      }
+    },
+    "ttest_vs_reference": {
+      "Baseline-A (LRU)": {
+        "t_statistic": 93.53686349125857,
+        "p_value": 6.748695077430078e-09
+      },
+      "Baseline-B (LFU)": {
+        "t_statistic": 71.74948801315868,
+        "p_value": 1.679319872727812e-09
+      },
+      "Baseline-C (Semantic)": {
+        "t_statistic": 35.79395648928848,
+        "p_value": 1.638218182385217e-07
+      },
+      "Baseline-D (Prompt)": {
+        "t_statistic": 60.36746320529347,
+        "p_value": 3.45907640644027e-08
+      },
+      "Baseline-E (No-Opt)": {
+        "t_statistic": 126.29837296430902,
+        "p_value": 2.357103974897776e-08
+      }
+    },
+    "effect_sizes_vs_reference": {
+      "Baseline-A (LRU)": 59.157906764125244,
+      "Baseline-B (LFU)": 45.37836061450612,
+      "Baseline-C (Semantic)": 22.638085795023198,
+      "Baseline-D (Prompt)": 38.17973605902724,
+      "Baseline-E (No-Opt)": 79.87810466812968
+    }
+  },
+  "cost_reduction_pct": {
+    "metric": "cost_reduction_pct",
+    "anova": {
+      "f_statistic": 36308.58161120236,
+      "p_value": 1.0315954051971739e-45
+    },
+    "summary": {
+      "Baseline-A (LRU)": {
+        "mean": 5.9888120197580355,
+        "median": 6.064158541660873,
+        "std": 0.146037550328868,
+        "ci_95_low": 5.80748245112881,
+        "ci_95_high": 6.170141588387261,
+        "n": 5
+      },
+      "Baseline-B (LFU)": {
+        "mean": 9.938349099856362,
+        "median": 9.893353838861135,
+        "std": 0.21535425560805826,
+        "ci_95_low": 9.670951473807865,
+        "ci_95_high": 10.20574672590486,
+        "n": 5
+      },
+      "Baseline-C (Semantic)": {
+        "mean": 21.393091635756704,
+        "median": 21.463264703605876,
+        "std": 0.1983836092307597,
+        "ci_95_low": 21.146765850341147,
+        "ci_95_high": 21.63941742117226,
+        "n": 5
+      },
+      "Baseline-D (Prompt)": {
+        "mean": 17.88785598776625,
+        "median": 17.807675195138103,
+        "std": 0.21129625454775583,
+        "ci_95_low": 17.625497035539006,
+        "ci_95_high": 18.150214939993496,
+        "n": 5
+      },
+      "Baseline-E (No-Opt)": {
+        "mean": 0.0,
+        "median": 0.0,
+        "std": 0.0,
+        "ci_95_low": 0.0,
+        "ci_95_high": 0.0,
+        "n": 5
+      },
+      "TokenCacheOps": {
+        "mean": 47.61234956977889,
+        "median": 47.60234447836745,
+        "std": 0.28720501834585394,
+        "ci_95_low": 47.25573743839539,
+        "ci_95_high": 47.96896170116239,
+        "n": 5
+      }
+    },
+    "ttest_vs_reference": {
+      "Baseline-A (LRU)": {
+        "t_statistic": 288.86616695360937,
+        "p_value": 1.5158387430328296e-13
+      },
+      "Baseline-B (LFU)": {
+        "t_statistic": 234.67165553998447,
+        "p_value": 1.2489849286316383e-15
+      },
+      "Baseline-C (Semantic)": {
+        "t_statistic": 167.95985856819013,
+        "p_value": 4.666060335358028e-14
+      },
+      "Baseline-D (Prompt)": {
+        "t_statistic": 186.41060225065414,
+        "p_value": 8.93659055143515e-15
+      },
+      "Baseline-E (No-Opt)": {
+        "t_statistic": 370.6914691800523,
+        "p_value": 3.1774579660392916e-10
+      }
+    },
+    "effect_sizes_vs_reference": {
+      "Baseline-A (LRU)": 182.69500530717366,
+      "Baseline-B (LFU)": 148.41938675776439,
+      "Baseline-C (Semantic)": 106.22714171104563,
+      "Baseline-D (Prompt)": 117.89641662315542,
+      "Baseline-E (No-Opt)": 234.44587036061495
+    }
+  },
+  "avg_latency_ms": {
+    "metric": "avg_latency_ms",
+    "anova": {
+      "f_statistic": 77066.95837305226,
+      "p_value": 1.234833923356835e-49
+    },
+    "summary": {
+      "Baseline-A (LRU)": {
+        "mean": 304.97991199996903,
+        "median": 305.17579999996894,
+        "std": 0.8768056405607673,
+        "ci_95_low": 303.89121400266276,
+        "ci_95_high": 306.0686099972753,
+        "n": 5
+      },
+      "Baseline-B (LFU)": {
+        "mean": 275.9817559999978,
+        "median": 276.09365999999767,
+        "std": 1.3139136959967836,
+        "ci_95_low": 274.35031666693175,
+        "ci_95_high": 277.61319533306386,
+        "n": 5
+      },
+      "Baseline-C (Semantic)": {
+        "mean": 170.40788,
+        "median": 170.5709,
+        "std": 1.0802890779786745,
+        "ci_95_low": 169.06652394422116,
+        "ci_95_high": 171.74923605577885,
+        "n": 5
+      },
+      "Baseline-D (Prompt)": {
+        "mean": 174.3554240000022,
+        "median": 174.6211200000019,
+        "std": 0.9855992246745956,
+        "ci_95_low": 173.1316409260662,
+        "ci_95_high": 175.57920707393816,
+        "n": 5
+      },
+      "Baseline-E (No-Opt)": {
+        "mean": 350.0,
+        "median": 350.0,
+        "std": 0.0,
+        "ci_95_low": 350.0,
+        "ci_95_high": 350.0,
+        "n": 5
+      },
+      "TokenCacheOps": {
+        "mean": 40.76418800000008,
+        "median": 40.986140000000354,
+        "std": 0.585663646234065,
+        "ci_95_low": 40.036990535414496,
+        "ci_95_high": 41.49138546458567,
+        "n": 5
+      }
+    },
+    "ttest_vs_reference": {
+      "Baseline-A (LRU)": {
+        "t_statistic": -560.3150307687912,
+        "p_value": 1.7079178301152922e-17
+      },
+      "Baseline-B (LFU)": {
+        "t_statistic": -365.6247335674178,
+        "p_value": 2.4708251726020206e-13
+      },
+      "Baseline-C (Semantic)": {
+        "t_statistic": -235.90878978995352,
+        "p_value": 1.9838649069516785e-13
+      },
+      "Baseline-D (Prompt)": {
+        "t_statistic": -260.5541030497584,
+        "p_value": 2.489641997483684e-14
+      },
+      "Baseline-E (No-Opt)": {
+        "t_statistic": -1180.664535276606,
+        "p_value": 3.087756899889062e-12
+      }
+    },
+    "effect_sizes_vs_reference": {
+      "Baseline-A (LRU)": -354.37434089134126,
+      "Baseline-B (LFU)": -231.2413853930522,
+      "Baseline-C (Semantic)": -149.20181915802567,
+      "Baseline-D (Prompt)": -164.78888386789214,
+      "Baseline-E (No-Opt)": -746.7178168116586
+    }
+  },
+  "throughput_rps": {
+    "metric": "throughput_rps",
+    "anova": {
+      "f_statistic": 15938.598717893063,
+      "p_value": 2.0101907087331904e-41
+    },
+    "summary": {
+      "Baseline-A (LRU)": {
+        "mean": 3.2789261613090934,
+        "median": 3.2767997986737543,
+        "std": 0.009426463868642041,
+        "ci_95_low": 3.267221660493032,
+        "ci_95_high": 3.290630662125155,
+        "n": 5
+      },
+      "Baseline-B (LFU)": {
+        "mean": 3.623493607736074,
+        "median": 3.6219593017818967,
+        "std": 0.017246945062390242,
+        "ci_95_low": 3.602078696973106,
+        "ci_95_high": 3.6449085184990424,
+        "n": 5
+      },
+      "Baseline-C (Semantic)": {
+        "mean": 5.868462428358006,
+        "median": 5.862664733550682,
+        "std": 0.03730706674501329,
+        "ci_95_low": 5.822139586702138,
+        "ci_95_high": 5.914785270013874,
+        "n": 5
+      },
+      "Baseline-D (Prompt)": {
+        "mean": 5.735558411614736,
+        "median": 5.726684149087975,
+        "std": 0.03261836198329565,
+        "ci_95_low": 5.6950573658597,
+        "ci_95_high": 5.776059457369772,
+        "n": 5
+      },
+      "Baseline-E (No-Opt)": {
+        "mean": 2.857142857142857,
+        "median": 2.857142857142857,
+        "std": 0.0,
+        "ci_95_low": 2.857142857142857,
+        "ci_95_high": 2.857142857142857,
+        "n": 5
+      },
+      "TokenCacheOps": {
+        "mean": 24.535464401036933,
+        "median": 24.39849178283174,
+        "std": 0.35917549735522475,
+        "ci_95_low": 24.08948911693402,
+        "ci_95_high": 24.981439685139847,
+        "n": 5
+      }
+    },
+    "ttest_vs_reference": {
+      "Baseline-A (LRU)": {
+        "t_statistic": 132.28826551230097,
+        "p_value": 1.9178001783117398e-08
+      },
+      "Baseline-B (LFU)": {
+        "t_statistic": 130.0388603092012,
+        "p_value": 1.956047335030298e-08
+      },
+      "Baseline-C (Semantic)": {
+        "t_statistic": 115.59064479098137,
+        "p_value": 2.449323054408936e-08
+      },
+      "Baseline-D (Prompt)": {
+        "t_statistic": 116.5602439612959,
+        "p_value": 2.5501764814285896e-08
+      },
+      "Baseline-E (No-Opt)": {
+        "t_statistic": 134.95965333711038,
+        "p_value": 1.8079086886835965e-08
+      }
+    },
+    "effect_sizes_vs_reference": {
+      "Baseline-A (LRU)": 83.66644534639451,
+      "Baseline-B (LFU)": 82.2437965819087,
+      "Baseline-C (Semantic)": 73.10594274939577,
+      "Baseline-D (Prompt)": 73.71917110851646,
+      "Baseline-E (No-Opt)": 85.3559793544026
+    }
+  },
+  "roi": {
+    "metric": "roi",
+    "anova": {
+      "f_statistic": 31792.836752124793,
+      "p_value": 5.076452273316504e-45
+    },
+    "summary": {
+      "Baseline-A (LRU)": {
+        "mean": 849.551983999984,
+        "median": 860.2529599999874,
+        "std": 20.740762568758083,
+        "ci_95_low": 823.7989258230649,
+        "ci_95_high": 875.3050421769032,
+        "n": 5
+      },
+      "Baseline-B (LFU)": {
+        "mean": 1410.479023999957,
+        "median": 1404.0886399999513,
+        "std": 30.58536296780745,
+        "ci_95_low": 1372.5022799308358,
+        "ci_95_high": 1448.4557680690782,
+        "n": 5
+      },
+      "Baseline-C (Semantic)": {
+        "mean": 3037.3215359999713,
+        "median": 3047.287759999911,
+        "std": 28.175132541745857,
+        "ci_95_low": 3002.337488278266,
+        "ci_95_high": 3072.3055837216766,
+        "n": 5
+      },
+      "Baseline-D (Prompt)": {
+        "mean": 2539.4957359999567,
+        "median": 2528.108179999936,
+        "std": 30.009031494800965,
+        "ci_95_low": 2502.2346019718993,
+        "ci_95_high": 2576.756870028014,
+        "n": 5
+      },
+      "Baseline-E (No-Opt)": {
+        "mean": -1.0,
+        "median": -1.0,
+        "std": 0.0,
+        "ci_95_low": -1.0,
+        "ci_95_high": -1.0,
+        "n": 5
+      },
+      "TokenCacheOps": {
+        "mean": 9615.763372382282,
+        "median": 9602.19757812493,
+        "std": 90.99458608101172,
+        "ci_95_low": 9502.778670814036,
+        "ci_95_high": 9728.748073950528,
+        "n": 5
+      }
+    },
+    "ttest_vs_reference": {
+      "Baseline-A (LRU)": {
+        "t_statistic": 210.0308204911098,
+        "p_value": 5.329617002699309e-10
+      },
+      "Baseline-B (LFU)": {
+        "t_statistic": 191.125959269953,
+        "p_value": 1.1495474519086242e-10
+      },
+      "Baseline-C (Semantic)": {
+        "t_statistic": 154.4230680832674,
+        "p_value": 5.429194780000915e-10
+      },
+      "Baseline-D (Prompt)": {
+        "t_statistic": 165.14093708162122,
+        "p_value": 2.6678852944034e-10
+      },
+      "Baseline-E (No-Opt)": {
+        "t_statistic": 236.31885753106573,
+        "p_value": 1.923560697038838e-09
+      }
+    },
+    "effect_sizes_vs_reference": {
+      "Baseline-A (LRU)": 132.83515431717433,
+      "Baseline-B (LFU)": 120.87867025552481,
+      "Baseline-C (Semantic)": 97.66572368287545,
+      "Baseline-D (Prompt)": 104.44429922249655,
+      "Baseline-E (No-Opt)": 149.46116876940062
+    }
+  }
+}
