@@ -111,8 +111,9 @@ class TokenCacheOps(BaseCache):
         self, query_embedding: np.ndarray, candidate_embeddings: np.ndarray,
         candidate_ids: List[int], threshold: float,
     ) -> Tuple[Optional[int], float]:
-        from sklearn.metrics.pairwise import cosine_similarity
-        sims = cosine_similarity(query_embedding.reshape(1, -1), candidate_embeddings)[0]
+        q = query_embedding / (np.linalg.norm(query_embedding) + 1e-9)
+        norms = np.linalg.norm(candidate_embeddings, axis=1, keepdims=True) + 1e-9
+        sims = (candidate_embeddings / norms) @ q
         best_idx = int(np.argmax(sims))
         best_sim = float(sims[best_idx])
         if best_sim >= threshold:
@@ -134,7 +135,7 @@ class TokenCacheOps(BaseCache):
                 if len(embs) == 0:
                     continue
                 # Tier-aware threshold: hotter tiers use slightly relaxed matching
-                tier_threshold = self.semantic.threshold - {"hot_access": 0.05, "strategic": 0.03, "evaluation": 0.02, "archive": 0.01}.get(tier_name, 0.0)
+                tier_threshold = self.semantic.threshold - {"hot_access": 0.025, "strategic": 0.015, "evaluation": 0.008}.get(tier_name, 0.0)
                 match_id, sim = self._find_match_with_threshold(
                     embedding, np.array(embs), ids, tier_threshold,
                 )

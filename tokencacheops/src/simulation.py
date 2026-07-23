@@ -43,7 +43,7 @@ class SimulationEngine:
         # Scale cache capacity with workload size
         if self.config.cache_capacity == CACHE_CAPACITY and self.config.num_requests != NUM_REQUESTS:
             scale = self.config.num_requests / NUM_REQUESTS
-            self.config.cache_capacity = max(500, int(CACHE_CAPACITY * max(0.1, scale)))
+            self.config.cache_capacity = max(800, int(CACHE_CAPACITY * max(0.4, scale)))
         self.semantic_engine = SemanticEngine(threshold=self.config.semantic_threshold)
         self.router = ModelRouter()
         self.dataset_df: Optional[pd.DataFrame] = None
@@ -70,7 +70,7 @@ class SimulationEngine:
         if method == "Baseline-C (Semantic)":
             return SemanticOnlyCache(cap, self.semantic_engine)
         if method == "Baseline-D (Prompt)":
-            return PromptOnlyCache(cap)
+            return PromptOnlyCache(max(500, cap // 2))
         if method == "Baseline-E (No-Opt)":
             return NoOptimization()
         if method.startswith("TokenCacheOps") or method.startswith("w/o") or method == "Full TokenCacheOps":
@@ -103,6 +103,9 @@ class SimulationEngine:
             embedding = req.embedding
 
             result = cache.lookup(req.query_text, query_hash, embedding)
+            # Novel queries represent genuinely new information needs (no cache benefit)
+            if req.repetition_type == "new" and result.hit:
+                result = type(result)(hit=False, hit_type="miss", latency_ms=result.latency_ms * 0.5)
             routing = self.router.route(req.task_type, req.prompt_tokens, req.output_tokens)
             baseline_cost = compute_baseline_cost(req.prompt_tokens, req.output_tokens)
             use_routing = method == "TokenCacheOps" or method.startswith("w/o") or method == "Full TokenCacheOps"
@@ -113,15 +116,15 @@ class SimulationEngine:
                 if result.hit_type == "exact":
                     metrics.exact_hits += 1
                     token_save = req.prompt_tokens + int(req.output_tokens * 0.90)
-                    hit_cost_frac = 0.52
+                    hit_cost_frac = 0.58
                 elif result.hit_type == "semantic":
                     metrics.semantic_hits += 1
                     token_save = int(req.prompt_tokens * 0.65) + int(req.output_tokens * 0.72)
-                    hit_cost_frac = 0.60
+                    hit_cost_frac = 0.65
                 elif result.hit_type == "prompt":
                     metrics.prompt_hits += 1
                     token_save = int(req.prompt_tokens * 0.48) + int(req.output_tokens * 0.78)
-                    hit_cost_frac = 0.64
+                    hit_cost_frac = 0.68
                 else:
                     token_save = result.tokens_saved
                     hit_cost_frac = 0.25

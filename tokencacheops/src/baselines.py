@@ -153,9 +153,22 @@ class SemanticOnlyCache(BaseCache):
         super().__init__(capacity, "Semantic-Only")
         self.semantic = semantic_engine
         # Stricter threshold for flat semantic cache (no tier-aware relaxation)
-        self.match_threshold = min(0.96, semantic_engine.threshold + 0.05)
+        self.match_threshold = min(0.95, semantic_engine.threshold + 0.04)
+        self._embedding_matrix: Optional[np.ndarray] = None
         self._embeddings: List[np.ndarray] = []
         self._entry_ids: List[int] = []
+
+    def _rebuild_matrix(self) -> None:
+        if self._embeddings:
+            self._embedding_matrix = np.vstack(self._embeddings) if len(self._embeddings) > 1 else self._embeddings[0].reshape(1, -1)
+        else:
+            self._embedding_matrix = None
+
+    def _append_embedding(self, emb: np.ndarray) -> None:
+        if self._embedding_matrix is None:
+            self._embedding_matrix = emb.reshape(1, -1)
+        else:
+            self._embedding_matrix = np.vstack([self._embedding_matrix, emb.reshape(1, -1)])
 
     def lookup(self, query_text: str, query_hash: str, embedding: Optional[np.ndarray] = None) -> CacheResult:
         if query_hash in {e.query_hash for e in self.entries.values()}:
@@ -167,9 +180,11 @@ class SemanticOnlyCache(BaseCache):
                         tokens_saved=entry.prompt_tokens + entry.output_tokens,
                     )
 
-        if embedding is not None and len(self._embeddings) > 0:
-            from sklearn.metrics.pairwise import cosine_similarity
-            sims = cosine_similarity(embedding.reshape(1, -1), np.array(self._embeddings))[0]
+        if embedding is not None and self._embedding_matrix is not None and len(self._embedding_matrix) > 0:
+            embs = self._embedding_matrix
+            q = embedding / (np.linalg.norm(embedding) + 1e-9)
+            norms = np.linalg.norm(embs, axis=1, keepdims=True) + 1e-9
+            sims = (embs / norms) @ q
             best_idx = int(np.argmax(sims))
             best_sim = float(sims[best_idx])
             if best_sim >= self.match_threshold:
@@ -186,14 +201,16 @@ class SemanticOnlyCache(BaseCache):
 
     def store(self, entry: CacheEntry) -> None:
         if len(self.entries) >= self.capacity:
-            # Evict oldest entries (FIFO) — less effective than tiered retention
             evict_id = self._entry_ids.pop(0)
             self._embeddings.pop(0)
             del self.entries[evict_id]
+            self._rebuild_matrix()  # rare: only on eviction
         self.entries[entry.entry_id] = entry
         if entry.embedding is not None:
             self._embeddings.append(entry.embedding)
             self._entry_ids.append(entry.entry_id)
+            if len(self._embeddings) <= self.capacity:
+                self._append_embedding(entry.embedding)
 
 
 class PromptOnlyCache(BaseCache):
@@ -204,9 +221,9 @@ class PromptOnlyCache(BaseCache):
         self._prefix_map: Dict[str, int] = {}
         self._prefixes: List[str] = []
 
-    def _extract_prefix(self, text: str, ratio: float = 0.7) -> str:
+    def _extract_prefix(self, text: str, n_words: int = 10) -> str:
         words = text.split()
-        n = max(3, int(len(words) * ratio))
+        n = min(n_words, len(words))
         return " ".join(words[:n])
 
     def lookup(self, query_text: str, query_hash: str, embedding: Optional[np.ndarray] = None) -> CacheResult:

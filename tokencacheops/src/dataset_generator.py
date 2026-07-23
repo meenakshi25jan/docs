@@ -225,10 +225,14 @@ class DatasetGenerator:
             rep_types.append("new")
         rep_types = rep_types[:100]
 
+        # Zipf popularity weights for repeated queries (realistic enterprise hot-spots)
+        zipf_weights = 1.0 / (np.arange(1, pool_size + 1) ** 0.8)
+        zipf_weights /= zipf_weights.sum()
+
         for i in range(self.num_requests):
             rep_type = str(np.random.choice(rep_types))
             if rep_type in ("exact", "semantic"):
-                base = base_queries[np.random.randint(len(base_queries))]
+                base = base_queries[int(np.random.choice(len(base_queries), p=zipf_weights))]
                 query_text = base["query_text"]
                 if rep_type == "semantic":
                     query_text = _apply_semantic_variant(query_text)

@@ -57,7 +57,11 @@ class SemanticEngine:
         """Find best semantic match above threshold."""
         if len(candidate_embeddings) == 0:
             return None, 0.0
-        sims = cosine_similarity(query_embedding.reshape(1, -1), candidate_embeddings)[0]
+        # Fast cosine similarity via dot product on normalized vectors
+        q = query_embedding / (np.linalg.norm(query_embedding) + 1e-9)
+        norms = np.linalg.norm(candidate_embeddings, axis=1, keepdims=True) + 1e-9
+        normed = candidate_embeddings / norms
+        sims = normed @ q
         best_idx = int(np.argmax(sims))
         best_sim = float(sims[best_idx])
         if best_sim >= self.threshold:
