@@ -1,13 +1,12 @@
 # TokenCacheOps: A Cloud-Agnostic Architecture for Intelligent Token Optimization, Semantic Caching, and AI FinOps Governance
 
-**Anonymous Authors**  
-*Enterprise AI Research Group*
+**Anonymous Authors** · *Enterprise AI Research Group*
 
 ---
 
 ## Abstract
 
-This paper presents **TokenCacheOps**, a cloud-agnostic architecture integrating a five-tier cache hierarchy, multi-factor retention scoring, semantic similarity matching, and task-aware model routing for enterprise AI workloads. We evaluate TokenCacheOps against five baseline strategies—LRU, LFU, semantic-only, prompt-only, and no optimization—using **100,000 synthetic enterprise requests** across **30 independent experimental runs**. TokenCacheOps achieves a **56.4% cache hit ratio** (46.9% relative improvement over the best baseline), **38.7% token reduction**, **45.6% inference cost reduction**, and **85.1% latency reduction** versus unoptimized inference. Statistical validation via one-way ANOVA (F = 1,193,523, p < 0.001) and Welch's t-tests confirm significance with large effect sizes (Cohen's d > 125). Ablation studies isolate the contribution of semantic reuse, business importance, influence rank, and penetration factor components.
+This paper presents **TokenCacheOps**, a cloud-agnostic architecture integrating a five-tier cache hierarchy, multi-factor retention scoring, semantic similarity matching (`all-MiniLM-L6-v2`), and task-aware model routing. Evaluated against five baselines using **100,000 synthetic enterprise requests** over **30 independent runs**, TokenCacheOps achieves **56.4% cache hit ratio** (46.9% improvement over best baseline), **38.7% token reduction**, **45.6% cost reduction**, **19.2 req/s throughput**, **CEI 549.2**, and **52.3× ROI**. ANOVA: F = 1,193,523, p < 0.001; Cohen's d > 125 vs. all baselines.
 
 **Index Terms—** semantic caching, token optimization, large language models, AI FinOps, enterprise AI, cache retention, model routing
 
@@ -15,22 +14,23 @@ This paper presents **TokenCacheOps**, a cloud-agnostic architecture integrating
 
 ## I. INTRODUCTION
 
-Enterprise adoption of large language models (LLMs) has accelerated rapidly, yet organizations face escalating inference costs, latency constraints, and governance challenges across heterogeneous cloud environments. Repeated queries over shared enterprise corpora—security policies, compliance documents, architecture standards, and operational manuals—create substantial opportunities for intelligent caching, but traditional LRU and LFU strategies fail to capture semantic equivalence, business value, or cross-domain reuse patterns.
+Enterprise LLM deployments face escalating inference costs, latency constraints, and governance challenges. TokenCacheOps addresses these through:
 
-TokenCacheOps addresses these limitations through a unified architecture combining:
-
-1. A **five-tier cache hierarchy** with differentiated retention policies
-2. A **nine-factor retention scoring function**
-3. **Embedding-based semantic similarity** using sentence-transformers (`all-MiniLM-L6-v2`)
-4. **Task-aware model routing** directing workloads to appropriately sized models
-
-This paper provides rigorous experimental validation demonstrating measurable improvements in token consumption, cache hit ratio, response latency, throughput, and cost.
+1. **Five-tier cache hierarchy** with differentiated retention
+2. **Nine-factor retention scoring** for enterprise-aware eviction
+3. **Semantic similarity engine** using sentence-transformers
+4. **Task-aware model routing** for cost-optimal inference
 
 ---
 
 ## II. RELATED WORK
 
-Semantic caching for LLM applications [3] demonstrated that embedding-based similarity matching can reduce redundant inference. Prompt caching [4] exploits prefix overlap in transformer attention mechanisms. FrugalGPT [5] introduced cascading model selection for cost reduction. TokenCacheOps extends these approaches by integrating tiered retention, enterprise governance signals, and FinOps metrics into a cloud-agnostic framework validated at 100,000-request scale.
+| Reference | Contribution |
+|-----------|-------------|
+| Bae et al. [3] | Semantic caching for LLM applications |
+| Liu et al. [4] | Cost-efficient prompt caching |
+| Chen et al. [5] | FrugalGPT cascading model selection |
+| **TokenCacheOps** | **Unified tiered retention + FinOps governance** |
 
 ---
 
@@ -46,93 +46,99 @@ Semantic caching for LLM applications [3] demonstrated that embedding-based simi
 | Archive | 30% | Infrequent semantically valuable entries |
 | Disposal | 10% | Eviction staging and TTL expiry |
 
+![Fig. 1. TokenCacheOps five-tier cache architecture](figures/figure1_architecture.png)
+
 ### B. Retention Scoring Formula
 
-```
-RetentionScore = w₁·Recency + w₂·Frequency + w₃·SemanticReuse
-              + w₄·BusinessImportance + w₅·InfluenceRank + w₆·PenetrationFactor
-              + w₇·TokenEfficiency + w₈·Freshness − w₉·SecuritySensitivity
-```
+$$\text{RetentionScore} = w_1 R + w_2 F + w_3 S + w_4 B + w_5 I + w_6 P + w_7 T + w_8 F_r - w_9 \text{Sec}$$
 
-**Default weights:** w₁=0.15, w₂=0.12, w₃=0.18, w₄=0.12, w₅=0.10, w₆=0.13, w₇=0.15, w₈=0.08, w₉=0.07
+| Factor | Weight |
+|--------|--------|
+| Recency | 0.15 |
+| Frequency | 0.12 |
+| SemanticReuse | 0.18 |
+| BusinessImportance | 0.12 |
+| InfluenceRank | 0.10 |
+| PenetrationFactor | 0.13 |
+| TokenEfficiency | 0.15 |
+| Freshness | 0.08 |
+| SecuritySensitivity | 0.07 |
 
 ### C. Semantic Similarity Engine
 
-- Model: `all-MiniLM-L6-v2` [2]
-- Similarity metric: Cosine similarity
-- Base threshold: τ = 0.90
-- Tier-aware relaxation: up to −0.025 on Hot Access tier
+- **Model:** `all-MiniLM-L6-v2` [2]
+- **Metric:** Cosine similarity
+- **Threshold:** τ = 0.90 (tier-aware relaxation up to −0.025 on Hot Access)
 
 ### D. Model Routing Engine
 
-| Task Type | Model Tier |
-|-----------|------------|
-| Classification, Extraction | Small |
-| Retrieval, Summarization, Q&A | Medium |
-| Reasoning | Frontier |
+| Task | Model Tier | Relative Cost |
+|------|------------|---------------|
+| Classification, Extraction | Small | 0.15× |
+| Retrieval, Summarization, Q&A | Medium | 0.45× |
+| Reasoning | Frontier | 1.0× |
 
-**Pricing:** $5/M input tokens, $15/M output tokens [1]
+**Pricing:** $5/M input, $15/M output tokens [1]
 
 ---
 
 ## IV. EXPERIMENTAL METHODOLOGY
 
-### A. Dataset Generation
+### Configuration
 
-- **Requests:** 100,000 synthetic enterprise AI workloads
-- **Task mix:** 25% classification, 20% retrieval, 15% summarization, 15% extraction, 15% Q&A, 10% reasoning
-- **Repetition:** 30% exact match, 30% semantic variants, 40% novel queries
-- **Prompt sizes:** 100–500 (40%), 500–2000 (40%), 2000–8000 (20%) tokens
-- **Contexts:** Security policies, compliance, architecture standards, financial procedures, HR policies, IT operations, project knowledge
+| Parameter | Value |
+|-----------|-------|
+| Total Requests | 100,000 |
+| Independent Runs | 30 |
+| Classification | 25% |
+| Retrieval | 20% |
+| Summarization | 15% |
+| Extraction | 15% |
+| Question Answering | 15% |
+| Reasoning | 10% |
+| Exact Match | 30% |
+| Semantic Variants | 30% |
+| Novel Queries | 40% |
+| Prompt Small (100–500) | 40% |
+| Prompt Medium (500–2000) | 40% |
+| Prompt Large (2000–8000) | 20% |
+| Cache Capacity | 1,500 entries |
+| Semantic Threshold | 0.90 |
+| Random Seed | 42 |
 
-### B. Baselines
+**Enterprise contexts:** security policies, compliance, architecture standards, financial procedures, HR policies, IT operations, project knowledge.
+
+### Baselines
 
 | ID | Method | Description |
 |----|--------|-------------|
-| A | LRU | Traditional least-recently-used cache |
-| B | LFU | Least-frequently-used cache |
+| A | LRU | Traditional least-recently-used |
+| B | LFU | Least-frequently-used |
 | C | Semantic-Only | Embedding-based semantic cache |
 | D | Prompt-Only | Prefix-matching prompt cache |
-| E | No-Optimization | Direct inference without caching |
+| E | No-Optimization | Direct inference |
 | — | **TokenCacheOps** | **Proposed five-tier architecture** |
 
-### C. Metrics
+### Metrics
 
-1. Cache Hit Ratio
-2. Semantic Hit Ratio
-3. Tokens Saved
-4. Response Time (mean, median, P95)
-5. Throughput (req/s)
-6. Cost Reduction (%)
-7. Cache Efficiency Index: CEI = (HitRatio × TokenSavings) / MemoryConsumption
-8. ROI = (Cost Savings − Cache Cost) / Cache Cost
-
-### D. Statistical Methods
-
-- 30 independent runs per method
-- One-way ANOVA across methods
-- Welch's t-tests vs. TokenCacheOps
-- Cohen's d effect sizes
-- 95% confidence intervals
+Cache Hit Ratio · Semantic Hit Ratio · Tokens Saved · Response Time · Throughput · Cost Reduction · CEI · ROI · Context Efficiency · Retrieval Efficiency
 
 ---
 
 ## V. EXPERIMENTAL RESULTS
 
-### A. Performance Comparison
+### TABLE I. Comprehensive Performance (Mean ± Std, 30 Runs)
 
-**TABLE I. PERFORMANCE COMPARISON (MEAN ± STD, 30 RUNS)**
+| Method | Hit % | Sem Hit % | Token % | Cost % | Latency (ms) | Throughput | CEI | ROI |
+|--------|-------|-----------|---------|--------|---------------|------------|-----|-----|
+| B-A (LRU) | 26.6±0.1 | 0.0 | 24.1±0.1 | 9.3±0.0 | 257.3 | 3.9 | 123.6 | 7.4× |
+| B-B (LFU) | 36.6±0.1 | 0.0 | 33.5±0.1 | 13.0±0.0 | 222.3 | 4.5 | 236.2 | 10.6× |
+| B-C (Semantic) | 38.2±0.1 | 25.3 | 27.6±0.1 | 12.2±0.0 | 218.2 | 4.6 | 203.6 | 9.9× |
+| B-D (Prompt) | 17.4±0.1 | 0.0 | 8.7±0.1 | 4.5±0.0 | 289.5 | 3.5 | 17.1 | 3.7× |
+| B-E (No-Opt) | 0.0±0.0 | 0.0 | 0.0±0.0 | 0.0±0.0 | 350.0 | 2.9 | 0.0 | — |
+| **TokenCacheOps** | **56.4±0.2** | **48.0** | **38.7±0.3** | **45.6±0.1** | **52.0** | **19.2** | **549.2** | **52.3×** |
 
-| Method | Hit Ratio (%) | Token Red. (%) | Cost Red. (%) | Latency (ms) | Throughput | ROI |
-|--------|--------------|----------------|---------------|-------------|------------|-----|
-| Baseline-A (LRU) | 26.6 ± 0.1 | 24.1 ± 0.1 | 9.3 ± 0.0 | 257.3 | 3.9 req/s | 7.4x |
-| Baseline-B (LFU) | 36.6 ± 0.1 | 33.5 ± 0.1 | 13.0 ± 0.0 | 222.3 | 4.5 req/s | 10.6x |
-| Baseline-C (Semantic) | 38.2 ± 0.1 | 27.6 ± 0.1 | 12.2 ± 0.0 | 218.2 | 4.6 req/s | 9.9x |
-| Baseline-D (Prompt) | 17.4 ± 0.1 | 8.7 ± 0.1 | 4.5 ± 0.0 | 289.5 | 3.5 req/s | 3.7x |
-| Baseline-E (No-Opt) | 0.0 ± 0.0 | 0.0 ± 0.0 | 0.0 ± 0.0 | 350.0 | 2.9 req/s | — |
-| **TokenCacheOps** | **56.4 ± 0.2** | **38.7 ± 0.3** | **45.6 ± 0.1** | **52.0** | **19.2 req/s** | **52.3x** |
-
-### B. Target vs. Achieved
+### TABLE II. Target vs. Achieved
 
 | Metric | Target | Achieved | Status |
 |--------|--------|----------|--------|
@@ -141,85 +147,102 @@ RetentionScore = w₁·Recency + w₂·Frequency + w₃·SemanticReuse
 | Latency Reduction | 15–35% | 85.1% | ✓ |
 | Cache Hit Improvement | 25–60% | 46.9% | ✓ |
 
-### C. Statistical Validation
+### Figures
 
-- **ANOVA (cache hit ratio):** F(5, 174) = 1,193,523, p < 0.001
-- **TokenCacheOps vs. Semantic-Only:** t = 487.8, p < 0.001, Cohen's d = 125.9
-- **95% CI (hit ratio):** [56.3%, 56.4%]
+![Fig. 2. Cache hit rate comparison](figures/figure2_cache_hit_rate.png)
 
-### D. Ablation Study
+![Fig. 3. Token savings comparison](figures/figure3_token_savings.png)
 
-**TABLE II. ABLATION STUDY RESULTS**
+![Fig. 4. Response latency distribution](figures/figure4_latency.png)
 
-| Variant | Hit Ratio (%) | Token Red. (%) | Cost Red. (%) |
-|---------|--------------|----------------|---------------|
-| w/o SemanticReuse | 55.6 | 37.8 | 45.8 |
-| w/o BusinessImportance | 56.2 | 38.5 | 45.7 |
-| w/o InfluenceRank | 56.4 | 38.7 | 45.6 |
-| w/o PenetrationFactor | 56.4 | 38.5 | 45.6 |
-| **Full TokenCacheOps** | **56.4** | **38.7** | **45.6** |
+![Fig. 5. AI inference cost reduction](figures/figure5_cost_reduction.png)
 
-### E. Figures
+![Fig. 6. Ablation study results](figures/figure6_ablation.png)
 
-See `outputs/figures/` for publication-quality figures:
-- Fig. 1: Architecture Diagram
-- Fig. 2: Cache Hit Rate Comparison
-- Fig. 3: Token Savings Comparison
-- Fig. 4: Latency Comparison
-- Fig. 5: Cost Reduction
-- Fig. 6: Ablation Study
-- Fig. 7: ROI Analysis
-- Fig. 8: Retention Score Heat Map
+![Fig. 7. ROI analysis](figures/figure7_roi.png)
+
+![Fig. 8. Retention score heat map](figures/figure8_retention_heatmap.png)
+
+### TABLE III. Ablation Study
+
+| Variant | Hit % | Token % | Cost % | Latency (ms) | ROI |
+|---------|-------|---------|--------|-------------|-----|
+| w/o SemanticReuse | 55.6 | 37.8 | 45.8 | 53.0 | 52.5× |
+| w/o BusinessImportance | 56.2 | 38.5 | 45.7 | 52.3 | 52.3× |
+| w/o InfluenceRank | 56.4 | 38.7 | 45.6 | 52.0 | 52.3× |
+| w/o PenetrationFactor | 56.4 | 38.5 | 45.6 | 52.1 | 52.3× |
+| **Full TokenCacheOps** | **56.4** | **38.7** | **45.6** | **52.0** | **52.3×** |
+
+### Statistical Validation
+
+| Comparison | t-statistic | p-value | Cohen's d |
+|------------|-------------|---------|-----------|
+| vs B-A (LRU) | 810.4 | 9.03×10⁻⁸⁰ | 209.2 |
+| vs B-B (LFU) | 520.5 | 1.33×10⁻⁷⁹ | 134.4 |
+| vs B-C (Semantic) | 487.8 | 2.45×10⁻⁷⁴ | 125.9 |
+| vs B-D (Prompt) | 1091.9 | 5.15×10⁻⁷⁷ | 281.9 |
+| vs B-E (No-Opt) | 1635.9 | 1.49×10⁻⁷³ | 422.4 |
+
+**ANOVA:** F(5, 174) = 1,193,523, p < 0.001
+
+**Context efficiency:** 0.325 · **Retrieval efficiency:** 0.492
 
 ---
 
 ## VI. DISCUSSION
 
-TokenCacheOps outperforms baselines through three synergistic innovations:
-
-1. **Five-tier architecture** resolves the capacity–hit-ratio tension by preserving high-retention-score entries across tier boundaries
-2. **Multi-signal retention scoring** integrates nine complementary enterprise signals beyond recency and frequency
-3. **Model routing synergy** compounds cache savings with inference cost optimization
-
-Semantic reuse scoring contributes −0.8 percentage points to hit ratio when ablated. The 38.7% token reduction translates to ~$23,000 monthly savings for organizations processing 10 million requests at stated pricing.
+TokenCacheOps outperforms baselines through tiered retention, semantic reuse, and model routing synergy. The five-tier architecture preserves high-value entries that flat caches evict. Semantic reuse ablation: −0.8pp hit ratio. At 10M monthly requests, **38.7% token reduction saves ~$23,000/month**.
 
 ---
 
 ## VII. LIMITATIONS
 
-1. Synthetic workloads may not capture all production traffic patterns
-2. Fixed OpenAI pricing and embedding model assumptions
-3. Cache capacity of 1,500 entries (workload-scaled)
-4. Single-node simulation without distributed coherence
-5. No live LLM inference validation
+1. Synthetic workloads
+2. Fixed OpenAI pricing assumptions
+3. Single-node cache (1,500 entries)
+4. Simulation without live LLM inference
+5. No distributed cache coherence
 
 ---
 
 ## VIII. FUTURE WORK
 
-- Reinforcement-learning cache optimization
-- Adaptive retention weighting
-- Multi-agent memory caching
-- Vector database integration (Pinecone, Weaviate, Milvus)
-- Hybrid cloud deployment
-- Federated cache learning
+Reinforcement-learning retention optimization · Adaptive weighting · Multi-agent memory caching · Vector DB integration (Pinecone, Weaviate, Milvus) · Hybrid cloud deployment · Federated cache learning
 
 ---
 
 ## IX. CONCLUSION
 
-TokenCacheOps achieves **56.4% cache hit ratio**, **38.7% token reduction**, **45.6% cost reduction**, **85.1% latency reduction**, and **52.3× ROI** across 100,000 enterprise requests and 30 independent runs—all statistically significant at p < 0.001. The framework provides a practical, reproducible foundation for AI FinOps governance in cloud-agnostic enterprise deployments.
+TokenCacheOps achieves **56.4% hit ratio**, **38.7% token reduction**, **45.6% cost reduction**, **85.1% latency reduction**, and **52.3× ROI** — all statistically significant (p < 0.001).
 
 ---
 
 ## REFERENCES
 
-[1] OpenAI, "API Pricing," 2024. https://openai.com/pricing
+[1] OpenAI, "API Pricing," 2024. https://openai.com/pricing  
+[2] N. Reimers and I. Gurevych, "Sentence-BERT," in *Proc. EMNLP-IJCNLP*, 2019.  
+[3] S. Bae et al., "Semantic Caching for LLM Applications," arXiv:2311.05834, 2023.  
+[4] Z. Liu et al., "Cost-Efficient Prompt Caching," arXiv:2405.08448, 2024.  
+[5] M. Chen et al., "FrugalGPT," arXiv:2305.05176, 2023.
 
-[2] N. Reimers and I. Gurevych, "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks," in *Proc. EMNLP-IJCNLP*, 2019.
+---
 
-[3] S. Bae et al., "Semantic Caching for LLM Applications," arXiv:2311.05834, 2023.
+## APPENDIX A. Data & Code Availability
 
-[4] Z. Liu et al., "Cost-Efficient Prompt Caching for Large Language Models," arXiv:2405.08448, 2024.
+| Resource | Location |
+|----------|----------|
+| Source code | `tokencacheops/src/` |
+| Experiment runner | `scripts/run_experiments.py` |
+| Results CSV | `outputs/data/experiment_results.csv` |
+| Ablation CSV | `outputs/data/ablation_results.csv` |
+| Workload dataset | `outputs/data/workload_dataset.csv` |
+| Statistics JSON | `outputs/data/statistical_analysis.json` |
+| All figures (PNG/PDF) | `outputs/figures/` |
+| Notebook | `notebooks/experiment.ipynb` |
+| Reproducibility guide | `REPRODUCIBILITY.md` |
 
-[5] M. Chen et al., "FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance," arXiv:2305.05176, 2023.
+```bash
+cd tokencacheops && pip install -r requirements.txt
+python3 scripts/run_experiments.py
+python3 scripts/build_ieee_paper.py
+```
