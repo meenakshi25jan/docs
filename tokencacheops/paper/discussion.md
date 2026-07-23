@@ -14,7 +14,7 @@ The experimental results demonstrate that TokenCacheOps's multi-dimensional adva
 
 ### B. Semantic Reuse Effects
 
-The ablation study confirms that semantic reuse is the single most impactful retention component, contributing an 11.1 percentage-point improvement in cache hit ratio. This finding aligns with enterprise workload characteristics: our synthetic dataset's 30% semantic variant rate mirrors observed paraphrasing patterns in production enterprise AI deployments, where users frequently rephrase queries while seeking identical information.
+The ablation study confirms that semantic reuse scoring contributes measurably to retention quality (−0.8% hit ratio when removed), while business importance weighting provides additional high-value entry preservation. At the 100,000-request scale with 30 independent runs, the integrated five-tier architecture demonstrates compensatory behavior where remaining retention signals partially absorb individual component removal.
 
 The `all-MiniLM-L6-v2` embedding model with τ = 0.82 threshold achieved an optimal precision-recall balance. Lower thresholds (τ < 0.75) increased false-positive semantic matches, serving incorrect cached responses; higher thresholds (τ > 0.90) missed valid paraphrases, reducing the semantic hit ratio below that of exact-match-only caching.
 
@@ -22,7 +22,7 @@ TokenCacheOps's tier-aware semantic search provides an additional advantage: by 
 
 ### C. Token Cost Reduction Analysis
 
-The 38.4% mean token reduction translates to substantial operational savings at enterprise scale. For an organization processing 10 million AI requests monthly with an average of 1,200 tokens per request, TokenCacheOps would save approximately 4.6 billion tokens monthly, equating to $23,000 in direct inference costs (at stated pricing) plus additional savings from model routing.
+The 38.7% mean token reduction (σ = 0.3%, 95% CI: [38.5%, 38.8%]) translates to substantial operational savings at enterprise scale. For an organization processing 10 million AI requests monthly with an average of 1,200 tokens per request, TokenCacheOps would save approximately 4.6 billion tokens monthly, equating to $23,000 in direct inference costs (at stated pricing) plus additional savings from model routing.
 
 The cost reduction distribution was right-skewed: runs with higher exact-match query proportions (closer to 35%) achieved up to 45% token reduction, while runs with more novel queries (45%+) achieved approximately 32%. This sensitivity underscores the importance of workload-aware cache configuration in production deployments.
 
