@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dnastoreai"
+version = "0.1.0"
+description = "AI-Assisted DNA Data Storage and Retrieval Research Platform"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "DNAStoreAI Research Team" }]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "numpy>=2.1.0",
+    "pandas>=2.2.0",
+    "scipy>=1.14.0",
+    "biopython>=1.84",
+    "networkx>=3.4.0",
+    "torch>=2.5.0",
+    "transformers>=4.46.0",
+    "loguru>=0.7.0",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14.0",
+    "asyncpg>=0.30.0",
+    "aiosqlite>=0.20.0",
+    "reedsolo>=1.7.0",
+    "python-multipart>=0.0.12",
+    "aiofiles>=24.1.0",
+    "httpx>=0.27.0",
+    "jinja2>=3.1.4",
+    "matplotlib>=3.9.0",
+    "seaborn>=0.13.0",
+    "pillow>=11.0.0",
+    "python-docx>=1.1.0",
+    "python-pptx>=1.0.0",
+    "pypdf>=5.1.0",
+    "chromadb>=0.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "pytest-benchmark>=5.1.0",
+    "black>=24.10.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
+    "httpx>=0.27.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dnastoreai*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --cov=dnastoreai --cov-report=term-missing --cov-report=xml --cov-fail-under=90"
+
+[tool.coverage.run]
+source = ["dnastoreai"]
+omit = ["dnastoreai/ai_reconstruction/*", "dnastoreai/modules/ai_reconstruction/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
