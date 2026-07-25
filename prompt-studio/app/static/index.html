@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt Studio</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <header class="header">
+        <div>
+          <h1>Prompt Studio</h1>
+          <p class="subtitle">
+            Generate production-ready, safe, structured prompts for any domain.
+          </p>
+        </div>
+        <div id="health-badge" class="badge badge-muted">Checking API…</div>
+      </header>
+
+      <main class="panel">
+        <form id="generate-form" class="form">
+          <label for="user-request">Your idea or requirements</label>
+          <textarea
+            id="user-request"
+            name="user_request"
+            rows="8"
+            placeholder="Example: Create a prompt for teaching algorithms to beginners with Python examples and exercises."
+            required
+          ></textarea>
+
+          <div class="grid">
+            <div>
+              <label for="mode">Mode</label>
+              <select id="mode" name="mode">
+                <option value="auto">Auto-detect</option>
+                <option value="beginner">Beginner</option>
+                <option value="professional" selected>Professional</option>
+                <option value="expert">Expert / Enterprise</option>
+              </select>
+            </div>
+            <div>
+              <label for="target-model">Target model (optional)</label>
+              <input
+                id="target-model"
+                name="target_model"
+                type="text"
+                placeholder="e.g. GPT-5, Claude, Gemini"
+              />
+            </div>
+            <div>
+              <label for="output-format">Output format</label>
+              <select id="output-format" name="output_format">
+                <option value="markdown" selected>Markdown</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" id="submit-btn">Generate Prompt</button>
+            <button type="button" id="copy-btn" class="secondary" disabled>
+              Copy Output
+            </button>
+            <button type="button" id="clear-btn" class="secondary">Clear</button>
+          </div>
+        </form>
+
+        <section class="output-section">
+          <div class="output-header">
+            <h2>Generated Output</h2>
+            <span id="meta" class="meta"></span>
+          </div>
+          <pre id="output" class="output" aria-live="polite">Submit a request to generate a prompt.</pre>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Prompt Studio v1.0 — OpenAI-compatible API backend</span>
+      </footer>
+    </div>
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
