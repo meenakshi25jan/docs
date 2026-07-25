@@ -53,10 +53,6 @@ Every chapter must contain:
 26. Exercises
 27. Further Reading
 
-## Algorithm Template (25 sections)
-
-See BOOK_SPEC in repository discussions or contributor guide for the full algorithm template.
-
 ## Book Parts
 
 0. Environment Setup & Python Fundamentals
@@ -86,10 +82,25 @@ Appendices
 
 ## Current Status
 
-| Part | Chapter | Status |
-|------|---------|--------|
+| Part | Chapters | Status |
+|------|----------|--------|
 | 0 | Chapter 0: Environment Setup | **Complete** |
-| 0.5 | Mathematical Foundations | Planned |
-| 1+ | Remaining chapters | Planned |
+| 0.5 | Chapters 1–4: Mathematical Foundations | **Complete** |
+| 1 | Chapters 5–8: Algorithm Fundamentals | **Complete** |
+| 2 | Chapters 9–15: Searching | **Complete** |
+| 3 | Chapters 16–22: Sorting | **Complete** |
+| 4 | Chapters 23–29: Graph Algorithms | **Complete** |
+| 5 | Chapters 30–43: Machine Learning | **Complete** |
+| 6 | Chapters 44–53: Deep Learning | **Complete** |
+| 7 | Chapters 54–59: Reinforcement Learning | **Complete** |
+| 8 | Chapters 60–67: Swarm Intelligence | **Complete** |
+| 9 | Chapters 68–71: Evolutionary Algorithms | **Complete** |
+| 10 | Chapters 72–83: Optimization | **Complete** |
+| 11 | Chapter 84: Algorithm Selection Guide | **Complete** |
+| 12 | Chapters 85–93: Real-World Projects (9 projects) | **Complete** |
+| 13 | Chapters 94–99: AI Systems Architecture | **Complete** |
+| Appendices | A–D | **Complete** |
 
-Reply **Continue** to generate the next chapter.
+## Book Status
+
+**The Comprehensive Algorithms Guide is complete.** All chapters (0–99), nine capstone projects, code modules, tests, and appendices are available in this repository.
