@@ -55,6 +55,27 @@ Open http://localhost:3000 (frontend) and http://localhost:8000/docs (API).
 docker compose up --build
 ```
 
+### Cheapest Cloud Deploy ($0/month)
+
+Deploy for free using **Neon** (database) + **Render** (backend/frontend) + **Vercel** (optional CDN):
+
+```bash
+# See full guide
+cat deploy/cheapest/DEPLOY.md
+
+# Or run the interactive script
+./deploy/cheapest/deploy.sh
+```
+
+**One-click:** Connect this repo to [Render Blueprints](https://dashboard.render.com/blueprints) — it reads `render.yaml` automatically. Set `DATABASE_URL` from a free [Neon](https://neon.tech) project.
+
+| Component | Provider | Cost |
+|-----------|----------|------|
+| PostgreSQL | Neon | $0 |
+| Backend API | Render free tier | $0 |
+| Frontend | Vercel or Render | $0 |
+| **Total** | | **$0/month** |
+
 ## Project Structure
 
 ```

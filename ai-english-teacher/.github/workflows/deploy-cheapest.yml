@@ -1,0 +1,43 @@
+name: Deploy (Cheapest Cloud)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deploy target'
+        required: true
+        default: 'render'
+        type: choice
+        options:
+          - render
+          - fly
+
+jobs:
+  deploy-fly:
+    if: github.event.inputs.target == 'fly'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-english-teacher
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: fly deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # Render deploys automatically via GitHub integration when render.yaml changes.
+  # Connect repo at: https://dashboard.render.com/blueprints
+  notify-render:
+    if: github.event.inputs.target == 'render'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render deploy instructions
+        run: |
+          echo "Render deploys via Blueprint (render.yaml)."
+          echo "1. Go to https://dashboard.render.com/blueprints"
+          echo "2. Connect this repo and apply the blueprint"
+          echo "3. Set DATABASE_URL from Neon (https://neon.tech)"

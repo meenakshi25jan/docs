@@ -1,0 +1,51 @@
+# Render.com Blueprint — $0/month free tier deployment
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ── Backend API (Python / FastAPI) ──────────────────────────────────────────
+  - type: web
+    name: ai-english-teacher-api
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: ai-english-teacher/backend
+    buildCommand: |
+      pip install -r requirements.txt
+      mkdir -p migrations
+      cp -r ../database/migrations/* migrations/ 2>/dev/null || true
+    startCommand: chmod +x start.sh && ./start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
+      - key: MIGRATIONS_DIR
+        value: migrations
+      - key: REQUIRE_MIGRATIONS
+        value: "false"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+
+  # ── Frontend (Next.js) ──────────────────────────────────────────────────────
+  - type: web
+    name: ai-english-teacher-web
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: ai-english-teacher/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ai-english-teacher-api.onrender.com/api/v1
