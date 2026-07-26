@@ -61,7 +61,9 @@ class Settings(BaseSettings):
             return v
         if isinstance(v, str):
             v = v.strip()
-            if v.startswith("["):
+            if not v:
+            return ["http://localhost:3000"]
+        if v.startswith("["):
                 return json.loads(v)
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return ["http://localhost:3000"]
