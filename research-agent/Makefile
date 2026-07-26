@@ -52,3 +52,6 @@ advise-ai:
 
 advise-web:
 	./scripts/advise.sh web
+
+create:
+	./scripts/create-project.sh

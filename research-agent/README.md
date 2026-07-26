@@ -10,6 +10,16 @@ A production-ready **AI Web Crawler and Research Assistant** built with Python 3
 | **Beginner Playbook** | Non-developers, step-by-step | [docs/BEGINNER_PLAYBOOK.md](docs/BEGINNER_PLAYBOOK.md) |
 | Quick Start | Developers | This README |
 
+### Create this project (one command)
+
+| OS | Command |
+|----|---------|
+| **Windows** | `powershell -ExecutionPolicy Bypass -File scripts\create-project.ps1` |
+| **Linux / Mac** | `chmod +x scripts/create-project.sh && ./scripts/create-project.sh` |
+| **Shortcut** | `make create` |
+
+📖 **Full beginner guide:** [docs/CREATE_PROJECT.md](docs/CREATE_PROJECT.md)
+
 ### OS-aware project advisor (run first)
 
 Detects your operating system and tells you exactly what to install:
