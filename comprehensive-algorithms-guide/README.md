@@ -6,6 +6,18 @@
 
 ---
 
+## Single Complete Book
+
+All **104 chapters and appendices** are merged into one file:
+
+**[COMPREHENSIVE_ALGORITHMS_GUIDE_COMPLETE.md](./COMPREHENSIVE_ALGORITHMS_GUIDE_COMPLETE.md)** (~34,000 lines, 0.8 MB)
+
+Rebuild after editing chapters:
+
+```bash
+python scripts/build_single_book.py
+```
+
 ## Book Status: Complete
 
 | Metric | Count |
