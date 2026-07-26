@@ -56,3 +56,14 @@ app.mount("/metrics", metrics_app)
 @app.get("/health")
 async def health():
     return {"status": "healthy", "version": settings.APP_VERSION}
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "docs": "/docs",
+        "health": "/health",
+        "api": settings.API_V1_PREFIX,
+    }
