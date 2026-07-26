@@ -1,11 +1,12 @@
 # Research Agent - Makefile (Linux/macOS)
 # Run 'make help' to see all commands
 
-.PHONY: help setup test serve docker-up docker-down health backup clean
+.PHONY: help setup test serve docker-up docker-down health backup clean advise
 
 help:
 	@echo "Research Agent - Available Commands"
 	@echo "===================================="
+	@echo "  make advise     OS-aware project advisor (run this first!)"
 	@echo "  make setup      Install dependencies and run tests"
 	@echo "  make test       Run unit tests"
 	@echo "  make serve      Start API server on port 8000"
@@ -42,3 +43,12 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	@echo "Cache cleaned"
+
+advise:
+	./scripts/advise.sh general
+
+advise-ai:
+	./scripts/advise.sh ai
+
+advise-web:
+	./scripts/advise.sh web

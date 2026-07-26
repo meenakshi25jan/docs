@@ -2,6 +2,32 @@
 
 A production-ready **AI Web Crawler and Research Assistant** built with Python 3.12+, FastAPI, Playwright, and ChromaDB. Search the web, crawl pages recursively, extract structured content, generate embeddings, summarize findings with AI, and export reports in multiple formats.
 
+## Documentation
+
+| Guide | Audience | Link |
+|-------|----------|------|
+| **Universal Playbook** | Any project, any OS — start here | [docs/UNIVERSAL_PROJECT_PLAYBOOK.md](docs/UNIVERSAL_PROJECT_PLAYBOOK.md) |
+| **Beginner Playbook** | Non-developers, step-by-step | [docs/BEGINNER_PLAYBOOK.md](docs/BEGINNER_PLAYBOOK.md) |
+| Quick Start | Developers | This README |
+
+### OS-aware project advisor (run first)
+
+Detects your operating system and tells you exactly what to install:
+
+| OS | Command |
+|----|---------|
+| **Linux / Mac** | `./scripts/advise.sh` or `make advise` |
+| **Windows** | `powershell -File scripts\advise.ps1` |
+| **Any project type** | `./scripts/advise.sh web` / `ai` / `mobile` / `api` / `data` |
+
+### One-command setup
+
+| OS | Command |
+|----|---------|
+| **Linux** | `chmod +x scripts/setup-linux.sh && ./scripts/setup-linux.sh` |
+| **Windows** | `powershell -ExecutionPolicy Bypass -File scripts\setup-windows.ps1` |
+| **macOS** | `chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh` |
+
 ## Features
 
 - **Web Search**: DuckDuckGo (default), Google Custom Search, Bing Search API
