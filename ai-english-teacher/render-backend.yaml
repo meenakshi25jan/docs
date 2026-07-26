@@ -1,0 +1,29 @@
+# Backend only — use with Vercel frontend ($0/month)
+# Deploy: https://dashboard.render.com/blueprints → connect repo → use this file
+
+services:
+  - type: web
+    name: ai-english-teacher-api
+    runtime: python
+    region: ohio
+    plan: free
+    rootDir: ai-english-teacher/backend
+    buildCommand: |
+      pip install -r requirements.txt
+      mkdir -p migrations
+      cp -r ../database/migrations/* migrations/ 2>/dev/null || true
+    startCommand: chmod +x start.sh && ./start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MIGRATIONS_DIR
+        value: migrations
+      - key: OPENAI_API_KEY
+        sync: false
