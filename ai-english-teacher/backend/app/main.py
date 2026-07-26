@@ -57,7 +57,18 @@ except ImportError:
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "version": settings.APP_VERSION}
+    db_status = "ok"
+    try:
+        get_settings().DATABASE_URL.strip()
+        if not get_settings().DATABASE_URL.strip():
+            db_status = "not_configured"
+    except Exception:
+        db_status = "error"
+    return {
+        "status": "healthy",
+        "version": settings.APP_VERSION,
+        "database": db_status,
+    }
 
 
 @app.get("/")
