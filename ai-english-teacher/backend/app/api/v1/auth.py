@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentInput
 from app.agents import AGENT_REGISTRY
-from app.core.database import disable_row_security, get_db, set_tenant_context
+from app.core.database import disable_auth_lookup, enable_auth_lookup, get_db, set_tenant_context
 from app.core.security import (
     TokenPayload,
     create_access_token,
@@ -52,8 +52,6 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    await disable_row_security(db)
-
     tenant = await db.scalar(select(Tenant).where(Tenant.slug == req.tenant_slug))
     if not tenant:
         tenant = Tenant(name=req.tenant_slug.title(), slug=req.tenant_slug)
@@ -93,8 +91,9 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
-    await disable_row_security(db)
+    await enable_auth_lookup(db)
     user = await db.scalar(select(User).where(User.email == req.email))
+    await disable_auth_lookup(db)
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

@@ -61,8 +61,12 @@ async def set_tenant_context(db: AsyncSession, tenant_id: str) -> None:
     await db.execute(text(f"SET LOCAL app.tenant_id = '{safe_tenant_id}'"))
 
 
-async def disable_row_security(db: AsyncSession) -> None:
-    await db.execute(text("SET LOCAL row_security = off"))
+async def enable_auth_lookup(db: AsyncSession) -> None:
+    await db.execute(text("SET LOCAL app.auth_lookup = 'on'"))
+
+
+async def disable_auth_lookup(db: AsyncSession) -> None:
+    await db.execute(text("SET LOCAL app.auth_lookup = 'off'"))
 
 
 async def get_db(

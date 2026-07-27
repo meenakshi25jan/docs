@@ -58,18 +58,37 @@ except ImportError:
 
 @app.get("/health")
 async def health():
-    db_status = "ok"
-    try:
-        get_settings().DATABASE_URL.strip()
-        if not get_settings().DATABASE_URL.strip():
-            db_status = "not_configured"
-    except Exception:
-        db_status = "error"
+    env_db = os.environ.get("DATABASE_URL", "").strip()
+    settings_db = get_settings().DATABASE_URL.strip()
+
+    if not env_db and not settings_db:
+        db_status = "not_configured"
+    elif env_db.startswith("postgresql") or settings_db.startswith("postgresql"):
+        db_status = "configured"
+    else:
+        db_status = "invalid_format"
+
     return {
         "status": "healthy",
         "version": settings.APP_VERSION,
         "database": db_status,
+        "hint": (
+            "Set DATABASE_URL in Render → Environment to full postgresql://..."
+            if db_status != "configured"
+            else "ready"
+        ),
     }
+
+
+@app.get("/health/auth")
+async def health_auth():
+    from app.core.security import hash_password, verify_password
+
+    try:
+        hashed = hash_password("health-check")
+        return {"password_hashing": "ok" if verify_password("health-check", hashed) else "failed"}
+    except Exception as exc:
+        return {"password_hashing": "error", "detail": str(exc)}
 
 
 @app.get("/")
