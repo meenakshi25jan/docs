@@ -33,19 +33,20 @@ class Settings(BaseSettings):
     MICROSOFT_CLIENT_SECRET: str = ""
     OAUTH_REDIRECT_BASE_URL: str = "http://localhost:8000"
 
-    # Azure OpenAI
+    # Azure OpenAI — powers Microsoft Copilot in custom apps
     AZURE_OPENAI_ENDPOINT: str = ""
     AZURE_OPENAI_API_KEY: str = ""
-    AZURE_OPENAI_DEPLOYMENT: str = "gpt-5.5"
+    AZURE_OPENAI_DEPLOYMENT: str = "gpt-4o-mini"
     AZURE_OPENAI_API_VERSION: str = "2024-12-01-preview"
 
-    # OpenAI (fallback)
+    # OpenAI / Groq (OpenAI-compatible APIs)
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_BASE_URL: str = ""  # e.g. https://api.groq.com/openai/v1
 
-    # Ollama (local / self-hosted LLM — OpenAI-compatible API)
-    AI_PROVIDER: str = "auto"  # auto | ollama | azure | openai | mock
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    # LLM provider: auto | copilot | azure | openai | ollama | mock
+    AI_PROVIDER: str = "auto"
+    OLLAMA_BASE_URL: str = ""
     OLLAMA_MODEL: str = "llama3.2"
 
     # Azure Speech

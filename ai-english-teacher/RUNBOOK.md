@@ -602,7 +602,27 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/auth/register \
 
 ---
 
-## 13. Ollama LLM Setup (recommended)
+## 13. Microsoft Copilot / Azure OpenAI (recommended for cloud)
+
+Replace Ollama with **Microsoft Copilot** (Azure OpenAI) for real AI on Render.
+
+> Full setup guide: **[deploy/cheapest/COPILOT_AZURE.md](deploy/cheapest/COPILOT_AZURE.md)**
+
+### Quick setup on Render API
+
+| Key | Value |
+|-----|-------|
+| `AI_PROVIDER` | `copilot` |
+| `AZURE_OPENAI_ENDPOINT` | `https://your-name.openai.azure.com/` |
+| `AZURE_OPENAI_API_KEY` | From Azure portal → Keys |
+| `AZURE_OPENAI_DEPLOYMENT` | `gpt-4o-mini` |
+| `AZURE_OPENAI_API_VERSION` | `2024-12-01-preview` |
+
+Verify: `curl https://ai-english-teacher-api.onrender.com/health/ai` → `"provider":"copilot"`
+
+---
+
+## 14. Ollama LLM Setup (local only)
 
 The repetitive **"Interesting! Tell me more."** replies happen when no LLM is configured (mock mode). Use **Ollama** for free, local AI.
 
@@ -651,7 +671,7 @@ Expected: `{"provider":"ollama","model":"llama3.2","configured":true}`
 
 ---
 
-## 14. Voice Practice
+## 15. Voice Practice
 
 Voice is built into the **Conversation** page using the browser Web Speech API (no extra API keys).
 

@@ -126,7 +126,7 @@ async def health_ai():
         "model": ai_client.model,
         "configured": ai_client.is_configured,
         "hint": (
-            "Set OLLAMA_BASE_URL=http://localhost:11434 and run: ollama pull llama3.2"
+            "Set AI_PROVIDER=copilot + AZURE_OPENAI_* keys (Microsoft Copilot via Azure)"
             if ai_client.provider == "mock"
             else "ready"
         ),

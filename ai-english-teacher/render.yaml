@@ -26,6 +26,12 @@ services:
         value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
       - key: SKIP_MIGRATIONS
         value: "true"
+      - key: AI_PROVIDER
+        value: copilot
+      - key: AZURE_OPENAI_DEPLOYMENT
+        value: gpt-4o-mini
+      - key: AZURE_OPENAI_API_VERSION
+        value: "2024-12-01-preview"
       - key: OPENAI_API_KEY
         sync: false
       - key: AZURE_OPENAI_ENDPOINT

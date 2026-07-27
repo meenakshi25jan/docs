@@ -1,4 +1,4 @@
-"""LLM abstraction — Azure OpenAI, OpenAI, Ollama, or mock."""
+"""LLM abstraction — Microsoft Copilot (Azure OpenAI), OpenAI, Ollama, or mock."""
 
 import json
 import re
@@ -9,6 +9,9 @@ from openai import AsyncAzureOpenAI, AsyncOpenAI
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# copilot = Azure OpenAI (same API that powers Microsoft Copilot)
+COPILOT_ALIASES = frozenset({"copilot", "azure", "microsoft"})
 
 
 def _extract_teacher_response(data: dict[str, Any]) -> str | None:
@@ -31,32 +34,46 @@ class AIClient:
         if provider == "mock":
             return
 
-        if provider == "ollama" or (provider == "auto" and settings.OLLAMA_BASE_URL):
-            if provider != "auto" or not (settings.AZURE_OPENAI_API_KEY and settings.AZURE_OPENAI_ENDPOINT):
-                if provider != "auto" or not settings.OPENAI_API_KEY:
-                    base = settings.OLLAMA_BASE_URL.rstrip("/")
-                    self._client = AsyncOpenAI(base_url=f"{base}/v1", api_key="ollama")
-                    self._model = settings.OLLAMA_MODEL
-                    self._provider = "ollama"
-                    return
+        if self._try_copilot(provider):
+            return
+        if self._try_openai(provider):
+            return
+        if self._try_ollama(provider):
+            return
 
-        if provider in ("auto", "azure") and settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY:
-            self._client = AsyncAzureOpenAI(
-                azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-                api_key=settings.AZURE_OPENAI_API_KEY,
-                api_version=settings.AZURE_OPENAI_API_VERSION,
-            )
-            self._model = settings.AZURE_OPENAI_DEPLOYMENT
-            self._provider = "azure"
-        elif provider in ("auto", "openai") and settings.OPENAI_API_KEY:
-            self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            self._model = settings.OPENAI_MODEL
-            self._provider = "openai"
-        elif settings.OLLAMA_BASE_URL:
-            base = settings.OLLAMA_BASE_URL.rstrip("/")
-            self._client = AsyncOpenAI(base_url=f"{base}/v1", api_key="ollama")
-            self._model = settings.OLLAMA_MODEL
-            self._provider = "ollama"
+    def _try_copilot(self, provider: str) -> bool:
+        if provider not in ("auto", *COPILOT_ALIASES):
+            return False
+        if not (settings.AZURE_OPENAI_ENDPOINT and settings.AZURE_OPENAI_API_KEY):
+            return False
+        self._client = AsyncAzureOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT.rstrip("/"),
+            api_key=settings.AZURE_OPENAI_API_KEY,
+            api_version=settings.AZURE_OPENAI_API_VERSION,
+        )
+        self._model = settings.AZURE_OPENAI_DEPLOYMENT
+        self._provider = "copilot"
+        return True
+
+    def _try_openai(self, provider: str) -> bool:
+        if provider not in ("auto", "openai") or not settings.OPENAI_API_KEY:
+            return False
+        self._client = AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_BASE_URL or None,
+        )
+        self._model = settings.OPENAI_MODEL
+        self._provider = "openai"
+        return True
+
+    def _try_ollama(self, provider: str) -> bool:
+        if provider not in ("auto", "ollama") or not settings.OLLAMA_BASE_URL:
+            return False
+        base = settings.OLLAMA_BASE_URL.rstrip("/")
+        self._client = AsyncOpenAI(base_url=f"{base}/v1", api_key="ollama")
+        self._model = settings.OLLAMA_MODEL
+        self._provider = "ollama"
+        return True
 
     @property
     def is_configured(self) -> bool:
@@ -91,8 +108,7 @@ class AIClient:
             "messages": chat_messages,
             "temperature": temperature,
         }
-        # Ollama and some models ignore response_format — still works without it
-        if response_format and self._provider != "ollama":
+        if response_format and self._provider not in ("ollama", "mock"):
             kwargs["response_format"] = response_format
 
         response = await self._client.chat.completions.create(**kwargs)
@@ -116,7 +132,6 @@ class AIClient:
         try:
             return json.loads(content)
         except json.JSONDecodeError:
-            # Ollama often returns plain text — wrap for teacher agent
             if "teacher" in system_prompt.lower() or "role-play" in system_prompt.lower():
                 return {"response": content.strip(), "grammar_corrections": [], "raw_response": content}
             return {"raw_response": content}
@@ -184,14 +199,16 @@ class AIClient:
                 "recommended_words": ["nevertheless", "furthermore", "consequently"],
             })
         if "teacher" in system_prompt.lower() or "role-play" in system_prompt.lower():
-            # Extract learner message from formatted prompt
             learner_line = user_message
             if "Learner:" in user_message:
                 learner_line = user_message.split("Learner:")[-1].strip()
             elif "Start the conversation" in user_message:
                 learner_line = "hello"
             return self._mock_teacher_json(learner_line)
-        return json.dumps({"score": 70.0, "feedback": "Mock AI — set OLLAMA_BASE_URL or OPENAI_API_KEY."})
+        return json.dumps({
+            "score": 70.0,
+            "feedback": "Mock AI — set AI_PROVIDER=copilot with Azure OpenAI keys.",
+        })
 
 
 ai_client = AIClient()
