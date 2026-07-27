@@ -52,6 +52,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    await disable_row_security(db)
+
     tenant = await db.scalar(select(Tenant).where(Tenant.slug == req.tenant_slug))
     if not tenant:
         tenant = Tenant(name=req.tenant_slug.title(), slug=req.tenant_slug)

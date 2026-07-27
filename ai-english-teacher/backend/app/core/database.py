@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 
@@ -53,8 +55,10 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def set_tenant_context(db: AsyncSession, tenant_id: str) -> None:
-    tenant_id_ctx.set(tenant_id)
-    await db.execute(text("SET LOCAL app.tenant_id = :tenant_id"), {"tenant_id": tenant_id})
+    # SET LOCAL does not accept bound parameters in PostgreSQL.
+    safe_tenant_id = str(UUID(tenant_id))
+    tenant_id_ctx.set(safe_tenant_id)
+    await db.execute(text(f"SET LOCAL app.tenant_id = '{safe_tenant_id}'"))
 
 
 async def disable_row_security(db: AsyncSession) -> None:
