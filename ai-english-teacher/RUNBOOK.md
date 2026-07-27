@@ -492,7 +492,7 @@ All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
 | 10 | Render wrong build commands | Build failures | Fixed `render.yaml` + docs | `render.yaml` |
 | 11 | `IndentationError` in CORS validator | API won't start | Fixed indentation | `config.py` |
 | 13 | Frontend API URL baked as localhost | "Cannot reach the API" | Same-origin `/api/v1` proxy via Next.js rewrites | `next.config.js`, `api.ts` |
-| 14 | RLS uuid cast on empty tenant | HTTP 500 on register | Migration `004_fix_rls_policies.sql` | `database/migrations/` |
+| 15 | asyncpg rejects `sslmode` URL param | `/health/register` TypeError | Strip sslmode, pass `ssl=True` in connect_args | `db_url.py` |
 
 ---
 
@@ -599,6 +599,89 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"yourpass12","first_name":"You","last_name":"Name"}'
 ```
+
+---
+
+## 13. Ollama LLM Setup (recommended)
+
+The repetitive **"Interesting! Tell me more."** replies happen when no LLM is configured (mock mode). Use **Ollama** for free, local AI.
+
+### Install Ollama
+
+1. Download: https://ollama.com
+2. Pull a model:
+   ```bash
+   ollama pull llama3.2
+   ```
+3. Verify: `curl http://localhost:11434/api/tags`
+
+### Backend configuration
+
+Add to `backend/.env` (local) or Render API environment:
+
+| Variable | Value |
+|----------|-------|
+| `AI_PROVIDER` | `ollama` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` |
+| `OLLAMA_MODEL` | `llama3.2` |
+
+**Docker Compose:** use `OLLAMA_BASE_URL=http://host.docker.internal:11434`
+
+**Render cloud API:** Ollama cannot run on Render free tier. Options:
+- Run Ollama on your PC and expose via tunnel (dev only)
+- Use a VPS with Ollama (Hetzner ~€4/mo)
+- Set `OPENAI_API_KEY` on Render instead
+
+### Verify AI is working
+
+```bash
+curl https://ai-english-teacher-api.onrender.com/health/ai
+```
+
+Expected: `{"provider":"ollama","model":"llama3.2","configured":true}`
+
+### Recommended Ollama models for English teaching
+
+| Model | Size | Notes |
+|-------|------|-------|
+| `llama3.2` | 3B | Fast, good for conversation |
+| `llama3.1:8b` | 8B | Better grammar corrections |
+| `mistral` | 7B | Strong instruction following |
+| `qwen2.5:7b` | 7B | Good multilingual support |
+
+---
+
+## 14. Voice Practice
+
+Voice is built into the **Conversation** page using the browser Web Speech API (no extra API keys).
+
+### Features (implemented)
+
+| Feature | How |
+|---------|-----|
+| **Speech-to-text** | 🎤 mic button on `/conversation` |
+| **Text-to-speech** | Auto-plays AI replies (toggle "Auto-play voice") |
+| **Replay** | "🔊 Play again" on each AI message |
+| **Grammar tips** | Shown below AI messages when LLM returns corrections |
+
+### Browser support
+
+| Browser | Voice input | Voice output |
+|---------|-------------|--------------|
+| Chrome / Edge | ✅ | ✅ |
+| Safari | ✅ (limited) | ✅ |
+| Firefox | ❌ STT | ✅ TTS |
+
+Use **Chrome or Edge** for full voice practice.
+
+### Future improvements (not yet built)
+
+| Feature | Tool | Priority |
+|---------|------|----------|
+| Server-side Whisper STT | `faster-whisper` or Ollama whisper | P2 |
+| Pronunciation scoring | Azure Speech SDK | P3 |
+| Speaking assessment page | New `/speaking` route | P3 |
+| Record & replay audio | `MediaRecorder` + blob storage | P3 |
 
 ---
 

@@ -32,8 +32,15 @@ class BaseAgent(ABC):
         result = validate_ai_input(text)
         return result["sanitized"]
 
-    async def call_llm(self, system_prompt: str, user_message: str) -> dict:
-        return await ai_client.chat_completion_json(system_prompt, user_message)
+    async def call_llm(
+        self,
+        system_prompt: str,
+        user_message: str,
+        messages: list[dict[str, str]] | None = None,
+    ) -> dict:
+        return await ai_client.chat_completion_json(
+            system_prompt, user_message, messages=messages
+        )
 
     @abstractmethod
     async def execute(self, input_data: AgentInput) -> AgentOutput:

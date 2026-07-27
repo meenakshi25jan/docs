@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.ai.openai_client import extract_teacher_response
 from app.agents.base import AgentInput
 from app.agents import AGENT_REGISTRY
 from app.core.database import get_db
@@ -48,7 +49,7 @@ async def start_conversation(
             "message_history": [],
         },
     ))
-    initial_content = output.data.get("response", "Hello! Let's begin our practice session.")
+    initial_content = extract_teacher_response(output.data) or "Hello! Let's begin our practice session."
     msg = ConversationMessage(conversation_id=conv.id, role="assistant", content=initial_content)
     db.add(msg)
     await db.flush()
@@ -90,7 +91,7 @@ async def send_message(
         },
     ))
 
-    assistant_content = output.data.get("response", "Interesting! Tell me more.")
+    assistant_content = extract_teacher_response(output.data) or "Could you tell me more about that?"
     assistant_msg = ConversationMessage(
         conversation_id=conv.id,
         role="assistant",

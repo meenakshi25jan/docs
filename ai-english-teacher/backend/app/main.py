@@ -117,6 +117,22 @@ async def health_register():
         return {"register": "error", "detail": str(exc), "type": type(exc).__name__}
 
 
+@app.get("/health/ai")
+async def health_ai():
+    from app.ai.openai_client import ai_client
+
+    return {
+        "provider": ai_client.provider,
+        "model": ai_client.model,
+        "configured": ai_client.is_configured,
+        "hint": (
+            "Set OLLAMA_BASE_URL=http://localhost:11434 and run: ollama pull llama3.2"
+            if ai_client.provider == "mock"
+            else "ready"
+        ),
+    }
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, HTTPException):

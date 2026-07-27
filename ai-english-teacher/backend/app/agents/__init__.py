@@ -94,8 +94,12 @@ Return JSON: {{"response": str, "grammar_corrections": [], "vocabulary_introduce
         prompt = self.build_system_prompt(
             scenario=scenario, cefr_level=cefr, error_summary=", ".join(errors[:5]) or "none"
         )
-        history_text = "\n".join(f"{m['role']}: {m['content']}" for m in history[-10:])
-        result = await self.call_llm(prompt, f"History:\n{history_text}\n\nLearner: {user_message}")
+        chat_messages = [
+            {"role": m["role"], "content": m["content"]}
+            for m in history[-10:]
+            if m.get("role") in ("user", "assistant") and m.get("content")
+        ]
+        result = await self.call_llm(prompt, user_message, messages=chat_messages)
         return AgentOutput(data=result)
 
 

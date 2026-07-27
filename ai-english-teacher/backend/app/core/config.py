@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
 
+    # Ollama (local / self-hosted LLM — OpenAI-compatible API)
+    AI_PROVIDER: str = "auto"  # auto | ollama | azure | openai | mock
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2"
+
     # Azure Speech
     AZURE_SPEECH_KEY: str = ""
     AZURE_SPEECH_REGION: str = "eastus"
