@@ -16,6 +16,6 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: CORS_ORIGINS
-        value: '["http://localhost:3000"]'
+        value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
       - key: SKIP_MIGRATIONS
         value: "true"

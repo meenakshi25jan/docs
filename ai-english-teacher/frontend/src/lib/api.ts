@@ -11,15 +11,25 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   const token = options.token || (typeof window !== 'undefined' ? localStorage.getItem('access_token') : null);
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    method: options.method || 'GET',
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${endpoint}`, {
+      method: options.method || 'GET',
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach the API. On Render free tier the server may be waking up — wait 30–60 seconds and try again.'
+    );
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(error.detail || `HTTP ${res.status}`);
+    const detail = error.detail;
+    throw new Error(
+      typeof detail === 'string' ? detail : Array.isArray(detail) ? detail[0]?.msg || 'Request failed' : `HTTP ${res.status}`
+    );
   }
   return res.json();
 }

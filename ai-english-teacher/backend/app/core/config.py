@@ -52,21 +52,31 @@ class Settings(BaseSettings):
     RATE_LIMIT_TENANT_PER_MINUTE: int = 1000
 
     # CORS (comma-separated or JSON array)
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "https://ai-english-teacher-web.onrender.com",
+    ]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Any) -> list[str]:
         if isinstance(v, list):
-            return v
-        if isinstance(v, str):
+            origins = v
+        elif isinstance(v, str):
             v = v.strip()
             if not v:
-                return ["http://localhost:3000"]
-            if v.startswith("["):
-                return json.loads(v)
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return ["http://localhost:3000"]
+                origins = ["http://localhost:3000"]
+            elif v.startswith("["):
+                origins = json.loads(v)
+            else:
+                origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+        else:
+            origins = ["http://localhost:3000"]
+
+        production = "https://ai-english-teacher-web.onrender.com"
+        if production not in origins:
+            origins.append(production)
+        return origins
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

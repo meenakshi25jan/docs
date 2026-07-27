@@ -1,5 +1,9 @@
 from collections.abc import AsyncGenerator
+from contextvars import ContextVar
 
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -7,6 +11,10 @@ from app.core.config import get_settings
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+tenant_id_ctx: ContextVar[str] = ContextVar(
+    "tenant_id", default="00000000-0000-0000-0000-000000000000"
+)
+_optional_bearer = HTTPBearer(auto_error=False)
 
 
 class Base(DeclarativeBase):
@@ -44,15 +52,32 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _session_factory
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def set_tenant_context(db: AsyncSession, tenant_id: str) -> None:
+    tenant_id_ctx.set(tenant_id)
+    await db.execute(text("SET LOCAL app.tenant_id = :tenant_id"), {"tenant_id": tenant_id})
+
+
+async def disable_row_security(db: AsyncSession) -> None:
+    await db.execute(text("SET LOCAL row_security = off"))
+
+
+async def get_db(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
+) -> AsyncGenerator[AsyncSession, None]:
+    if credentials:
+        try:
+            from app.core.security import decode_token
+
+            payload = decode_token(credentials.credentials)
+            if payload.get("tenant_id"):
+                tenant_id_ctx.set(str(payload["tenant_id"]))
+        except Exception:
+            pass
+
     factory = get_session_factory()
     async with factory() as session:
         try:
-            await session.execute(
-                __import__("sqlalchemy").text(
-                    f"SET LOCAL app.tenant_id = '{__import__('contextvars').ContextVar('tenant_id', default='00000000-0000-0000-0000-000000000000').get()}'"
-                )
-            )
+            await set_tenant_context(session, tenant_id_ctx.get())
             yield session
             await session.commit()
         except Exception:

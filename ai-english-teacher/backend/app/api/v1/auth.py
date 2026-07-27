@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentInput
 from app.agents import AGENT_REGISTRY
-from app.core.database import get_db
+from app.core.database import disable_row_security, get_db, set_tenant_context
 from app.core.security import (
     TokenPayload,
     create_access_token,
@@ -58,6 +58,8 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         db.add(tenant)
         await db.flush()
 
+    await set_tenant_context(db, str(tenant.id))
+
     existing = await db.scalar(
         select(User).where(User.tenant_id == tenant.id, User.email == req.email)
     )
@@ -89,9 +91,12 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    await disable_row_security(db)
     user = await db.scalar(select(User).where(User.email == req.email))
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    await set_tenant_context(db, str(user.tenant_id))
 
     user.last_login_at = datetime.now(timezone.utc)
     tokens = TokenResponse(

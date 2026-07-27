@@ -122,3 +122,21 @@ The homepage and `/dashboard/student` work but newer pages return **404** when t
 3. **Manual Deploy** → **Deploy latest commit**
 4. Wait for build logs to list routes including `/conversation`, `/login`, `/register`
 5. Test: https://ai-english-teacher-web.onrender.com/conversation
+
+---
+
+## "Failed to fetch" on Register / Login
+
+Usually caused by **CORS** or the API **cold start** on Render free tier.
+
+### Fix
+
+1. Open https://dashboard.render.com → **ai-english-teacher-api**
+2. **Environment** → set `CORS_ORIGINS` to:
+   ```
+   ["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]
+   ```
+3. **Manual Deploy** → Deploy latest commit on `cursor/cheapest-cloud-deploy-d164`
+4. Wait 30–60 seconds after deploy, then retry registration
+
+If it still fails, open https://ai-english-teacher-api.onrender.com/health first to wake the API, then register again.
