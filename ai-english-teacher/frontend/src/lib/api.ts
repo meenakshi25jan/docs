@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// Use same-origin /api/v1 proxy (see next.config.js rewrites) unless overridden.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 interface RequestOptions {
   method?: string;

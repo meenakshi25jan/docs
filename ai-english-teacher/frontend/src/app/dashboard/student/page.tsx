@@ -36,7 +36,7 @@ export default function StudentDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
     fetch(`${apiUrl}/dashboard/student`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
     })

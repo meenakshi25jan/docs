@@ -124,9 +124,12 @@
 
 ### Frontend — required
 
-| Variable | Local | Production |
-|----------|-------|------------|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api/v1` | `https://ai-english-teacher-api.onrender.com/api/v1` |
+| Variable | Local | Production (Render) |
+|----------|-------|---------------------|
+| `NEXT_PUBLIC_API_URL` | `/api/v1` | `/api/v1` |
+| `API_PROXY_URL` | `http://localhost:8000` | `https://ai-english-teacher-api.onrender.com` |
+
+The frontend uses a **same-origin proxy** (`/api/v1` → backend) so the browser never calls `localhost` or cross-origin URLs directly. This fixes "Cannot reach the API" when `NEXT_PUBLIC_API_URL` was missing at build time.
 
 Copy examples:
 ```bash
@@ -306,6 +309,7 @@ Update `CORS_ORIGINS` on API to include your Vercel URL.
 | `001_initial_schema.sql` | 16 tables, indexes, RLS policies |
 | `002_pgvector.sql` | Vector extension tables |
 | `003_auth_rls.sql` | Login email lookup policy |
+| `004_fix_rls_policies.sql` | Fix RLS uuid cast errors on register |
 
 **Run all migrations:**
 ```bash
@@ -422,9 +426,10 @@ INFO:     Application startup complete.
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| **"Failed to fetch" on register** | CORS blocked or API cold start | Set `CORS_ORIGINS` to include frontend URL; wake API via `/health` |
-| **CORS error in browser console** | Frontend URL not in `CORS_ORIGINS` | Add `https://ai-english-teacher-web.onrender.com` to API env |
-| **`NEXT_PUBLIC_API_URL` wrong** | Frontend points to localhost | Set to `https://ai-english-teacher-api.onrender.com/api/v1` on Render web service |
+| **"Cannot reach the API" / "Failed to fetch"** | Frontend called `localhost` (env missing at build) | Redeploy frontend; use `/api/v1` proxy + `API_PROXY_URL` (latest code) |
+| **"Cannot reach the API"** | API cold start on free tier | Open `/health` first, wait 30s, retry |
+| **CORS error in browser console** | Direct cross-origin API calls | Use `/api/v1` proxy (fixed in latest frontend) |
+| **`NEXT_PUBLIC_API_URL` wrong** | Points to localhost in production | Set to `/api/v1` and `API_PROXY_URL` to API URL on Render web |
 
 **CORS_ORIGINS value (copy exactly):**
 ```

@@ -85,7 +85,9 @@ async def get_db(
     factory = get_session_factory()
     async with factory() as session:
         try:
-            await set_tenant_context(session, tenant_id_ctx.get())
+            tid = tenant_id_ctx.get()
+            if tid != "00000000-0000-0000-0000-000000000000":
+                await set_tenant_context(session, tid)
             yield session
             await session.commit()
         except Exception:

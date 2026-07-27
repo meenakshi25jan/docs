@@ -46,4 +46,6 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: NEXT_PUBLIC_API_URL
-        value: https://ai-english-teacher-api.onrender.com/api/v1
+        value: /api/v1
+      - key: API_PROXY_URL
+        value: https://ai-english-teacher-api.onrender.com

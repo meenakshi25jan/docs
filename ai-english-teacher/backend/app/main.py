@@ -1,8 +1,10 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import select, text
 
 from app.core.config import get_settings
 from app.api.v1.auth import router as auth_router
@@ -89,6 +91,40 @@ async def health_auth():
         return {"password_hashing": "ok" if verify_password("health-check", hashed) else "failed"}
     except Exception as exc:
         return {"password_hashing": "error", "detail": str(exc)}
+
+
+@app.get("/health/register")
+async def health_register():
+    """Diagnostic: test tenant context + user table access (read-only)."""
+    from app.core.database import get_session_factory, set_tenant_context
+    from app.models import Tenant
+
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            tenant = await session.scalar(select(Tenant).where(Tenant.slug == "default"))
+            if not tenant:
+                return {"register": "error", "detail": "default tenant missing — run migrations"}
+            await set_tenant_context(session, str(tenant.id))
+            setting = await session.scalar(text("SELECT current_setting('app.tenant_id', true)"))
+            result = await session.execute(
+                text("SELECT COUNT(*) FROM users WHERE tenant_id = :tid"),
+                {"tid": tenant.id},
+            )
+            count = result.scalar()
+            return {"register": "ok", "tenant_id": str(tenant.id), "setting": setting, "users": count}
+    except Exception as exc:
+        return {"register": "error", "detail": str(exc), "type": type(exc).__name__}
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__},
+    )
 
 
 @app.get("/")
