@@ -140,3 +140,19 @@ Usually caused by **CORS** or the API **cold start** on Render free tier.
 4. Wait 30–60 seconds after deploy, then retry registration
 
 If it still fails, open https://ai-english-teacher-api.onrender.com/health first to wake the API, then register again.
+
+### Run login migration (one time)
+
+After deploying the latest API, run migration `003_auth_rls.sql` against Neon (SQL Editor):
+
+```sql
+CREATE POLICY auth_email_lookup ON users
+    FOR SELECT
+    USING (current_setting('app.auth_lookup', true) = 'on');
+```
+
+Or from Render shell / locally:
+
+```bash
+cd ai-english-teacher/backend && DATABASE_URL='your-neon-url' python3 scripts/migrate.py
+```
