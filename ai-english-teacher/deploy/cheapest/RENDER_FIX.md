@@ -103,3 +103,22 @@ This also removes the cold-start screen permanently.
 - [ ] `DATABASE_URL` is set with `?sslmode=require`
 - [ ] Logs show "Application startup complete"
 - [ ] `/health` returns JSON (not Render ASCII art)
+
+---
+
+## Frontend 404 on `/conversation`, `/login`, or `/register`
+
+The homepage and `/dashboard/student` work but newer pages return **404** when the
+**ai-english-teacher-web** service is still running an old build.
+
+### Fix
+
+1. Open https://dashboard.render.com → **ai-english-teacher-web**
+2. **Settings** → confirm:
+   - **Branch:** `cursor/cheapest-cloud-deploy-d164`
+   - **Root Directory:** `ai-english-teacher/frontend`
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start`
+3. **Manual Deploy** → **Deploy latest commit**
+4. Wait for build logs to list routes including `/conversation`, `/login`, `/register`
+5. Test: https://ai-english-teacher-web.onrender.com/conversation
