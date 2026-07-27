@@ -19,6 +19,8 @@ A production-ready, cloud-native AI-powered English learning platform supporting
 
 ## Quick Start
 
+> **Full guide:** See **[RUNBOOK.md](RUNBOOK.md)** — prerequisites, local setup, cloud deploy, all errors & fixes in one place.
+
 ### Prerequisites
 
 - Docker & Docker Compose
@@ -34,10 +36,11 @@ docker compose up -d postgres redis
 
 # Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-alembic upgrade head
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_english_teacher" \
+  python3 scripts/migrate.py
 uvicorn app.main:app --reload --port 8000
 
 # Frontend
@@ -57,14 +60,12 @@ docker compose up --build
 
 ### Cheapest Cloud Deploy ($0/month)
 
-Deploy for free using **Neon** (database) + **Render** (backend/frontend) + **Vercel** (optional CDN):
+See **[RUNBOOK.md §5](RUNBOOK.md#5-cloud-deployment-0month)** for the complete step-by-step guide.
 
 ```bash
-# See full guide
-cat deploy/cheapest/DEPLOY.md
-
-# Or run the interactive script
-./deploy/cheapest/deploy.sh
+# Quick reference
+cat RUNBOOK.md
+./deploy/cheapest/deploy.sh   # interactive helper
 ```
 
 **One-click:** Connect this repo to [Render Blueprints](https://dashboard.render.com/blueprints) — it reads `render.yaml` automatically. Set `DATABASE_URL` from a free [Neon](https://neon.tech) project.
@@ -101,6 +102,7 @@ ai-english-teacher/
 
 | # | Document | Path |
 |---|----------|------|
+| **Runbook** | **Prerequisites, deploy, all errors & fixes** | **[RUNBOOK.md](RUNBOOK.md)** |
 | 1 | Product Requirements | [docs/01-PRODUCT_REQUIREMENTS.md](docs/01-PRODUCT_REQUIREMENTS.md) |
 | 2 | System Architecture | [docs/02-SYSTEM_ARCHITECTURE.md](docs/02-SYSTEM_ARCHITECTURE.md) |
 | 3 | Database Design | [docs/03-DATABASE_DESIGN.md](docs/03-DATABASE_DESIGN.md) |

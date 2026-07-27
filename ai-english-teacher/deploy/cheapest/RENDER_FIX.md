@@ -1,5 +1,7 @@
 # Render Fix — App Stuck on "Welcome to Render"
 
+> **See also:** [RUNBOOK.md](../../RUNBOOK.md) — complete prerequisites, deployment, and error catalog in one document.
+
 Your API is **not starting**. Follow every step below in order.
 
 ---

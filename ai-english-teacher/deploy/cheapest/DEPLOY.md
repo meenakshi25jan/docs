@@ -1,5 +1,7 @@
 # Cheapest Cloud Deployment ($0/month)
 
+> **See also:** [RUNBOOK.md](../../RUNBOOK.md) — complete prerequisites, deployment, and error catalog in one document.
+
 Deploy the AI English Teacher platform for **$0/month** using free tiers.
 
 ## Recommended Stack (cheapest)
