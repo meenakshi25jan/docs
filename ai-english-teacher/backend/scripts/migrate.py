@@ -8,12 +8,11 @@ from pathlib import Path
 import asyncpg
 
 
-def normalize_database_url(url: str) -> str:
-    """Convert SQLAlchemy URL to asyncpg-compatible format."""
-    return (
-        url.replace("postgresql+asyncpg://", "postgresql://")
-        .replace("postgres://", "postgresql://")
-    )
+def normalize_database_url(url: str) -> tuple[str, dict]:
+    """Convert SQLAlchemy URL to asyncpg-compatible DSN + connect args."""
+    from app.core.db_url import prepare_asyncpg_dsn
+
+    return prepare_asyncpg_dsn(url)
 
 
 async def run_migrations() -> None:
@@ -22,7 +21,7 @@ async def run_migrations() -> None:
         print("DATABASE_URL not set — skipping migrations")
         return
 
-    database_url = normalize_database_url(database_url)
+    database_url, connect_args = normalize_database_url(database_url)
     migrations_dir = Path(os.environ.get("MIGRATIONS_DIR", ""))
     if not migrations_dir or not migrations_dir.exists():
         migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
@@ -33,7 +32,7 @@ async def run_migrations() -> None:
         print(f"Migrations directory not found: {migrations_dir}")
         return
 
-    conn = await asyncpg.connect(database_url, timeout=30)
+    conn = await asyncpg.connect(database_url, timeout=30, **connect_args)
     try:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS schema_migrations (

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import get_settings
+from app.core.db_url import prepare_asyncpg_url
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -36,8 +37,10 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
+        url, connect_args = prepare_asyncpg_url(_database_url())
         _engine = create_async_engine(
-            _database_url(),
+            url,
+            connect_args=connect_args,
             pool_size=settings.DATABASE_POOL_SIZE,
             max_overflow=settings.DATABASE_MAX_OVERFLOW,
             echo=settings.DEBUG,

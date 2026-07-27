@@ -418,7 +418,8 @@ INFO:     Application startup complete.
 | Error | Cause | Fix |
 |-------|-------|-----|
 | **`database: not_configured`** | `DATABASE_URL` empty or wrong format | Paste full Neon URL in Render → Environment |
-| **Connection refused / SSL error** | Missing SSL param | Add `?sslmode=require` to Neon URL |
+| **Connection refused / SSL error** | Missing SSL param | Keep `?sslmode=require` in Neon URL — app strips it and sets `ssl=True` for asyncpg |
+| **`connect() got an unexpected keyword argument 'sslmode'`** | asyncpg rejects sslmode query param | Deploy latest API code (`db_url.py` fix) |
 | **`relation "users" does not exist`** | Migrations not run | Run `python3 scripts/migrate.py` against Neon |
 | **HTTP 500 on register/login** | RLS or bcrypt issue | Deploy latest code + run migration `003_auth_rls.sql` |
 
@@ -490,7 +491,8 @@ All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
 | 9 | Next.js monorepo tracing | Incomplete production build | `outputFileTracingRoot` in config | `next.config.js` |
 | 10 | Render wrong build commands | Build failures | Fixed `render.yaml` + docs | `render.yaml` |
 | 11 | `IndentationError` in CORS validator | API won't start | Fixed indentation | `config.py` |
-| 12 | Health check misleading | `database: not_configured` when set | Improved diagnostics | `main.py` |
+| 13 | Frontend API URL baked as localhost | "Cannot reach the API" | Same-origin `/api/v1` proxy via Next.js rewrites | `next.config.js`, `api.ts` |
+| 14 | RLS uuid cast on empty tenant | HTTP 500 on register | Migration `004_fix_rls_policies.sql` | `database/migrations/` |
 
 ---
 
