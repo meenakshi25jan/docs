@@ -1,21 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { useSearchParams } from 'next/navigation';
+import { api, saveTokens } from '@/lib/api';
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('expired') === '1') {
+      setError('Your session expired. Please log in again.');
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const res = await api.auth.login(form) as { tokens: { access_token: string } };
-      localStorage.setItem('access_token', res.tokens.access_token);
+      const res = await api.auth.login(form) as { tokens: { access_token: string; refresh_token: string } };
+      saveTokens(res.tokens.access_token, res.tokens.refresh_token);
       window.location.href = '/dashboard/student';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -45,5 +53,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

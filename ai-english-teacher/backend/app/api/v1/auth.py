@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentInput
 from app.agents import AGENT_REGISTRY
+from app.core.config import get_settings
 from app.core.database import disable_auth_lookup, enable_auth_lookup, get_db, set_tenant_context
 from app.core.security import (
     TokenPayload,
     create_access_token,
     create_refresh_token,
+    decode_token,
     get_current_user,
     hash_password,
     require_role,
@@ -39,6 +41,7 @@ from app.schemas import (
     MessageCreate,
     MessageResponse,
     RegisterRequest,
+    RefreshRequest,
     SkillResult,
     TokenResponse,
     UserResponse,
@@ -46,6 +49,8 @@ from app.schemas import (
     WritingSubmit,
 )
 from app.scoring.engine import aggregate_scores
+
+settings = get_settings()
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -84,7 +89,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     tokens = TokenResponse(
         access_token=create_access_token({"sub": str(user.id), "tenant_id": str(tenant.id), "role": user.role, "email": user.email}),
         refresh_token=create_refresh_token({"sub": str(user.id)}),
-        expires_in=900,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return AuthResponse(user=UserResponse.model_validate(user), tokens=tokens)
 
@@ -103,9 +108,35 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     tokens = TokenResponse(
         access_token=create_access_token({"sub": str(user.id), "tenant_id": str(user.tenant_id), "role": user.role, "email": user.email}),
         refresh_token=create_refresh_token({"sub": str(user.id)}),
-        expires_in=900,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return AuthResponse(user=UserResponse.model_validate(user), tokens=tokens)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(req.refresh_token)
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user_id = UUID(payload["sub"])
+    await enable_auth_lookup(db)
+    user = await db.get(User, user_id)
+    await disable_auth_lookup(db)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    await set_tenant_context(db, str(user.tenant_id))
+    return TokenResponse(
+        access_token=create_access_token({
+            "sub": str(user.id),
+            "tenant_id": str(user.tenant_id),
+            "role": user.role,
+            "email": user.email,
+        }),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @router.get("/me", response_model=UserResponse)

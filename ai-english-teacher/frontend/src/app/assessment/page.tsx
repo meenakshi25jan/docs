@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, getAccessToken } from '@/lib/api';
 
 export default function AssessmentPage() {
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
@@ -13,6 +13,12 @@ export default function AssessmentPage() {
   });
   const [results, setResults] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!getAccessToken()) {
+      window.location.href = '/login?expired=1';
+    }
+  }, []);
 
   async function startAssessment() {
     setLoading(true);

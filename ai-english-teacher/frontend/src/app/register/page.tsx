@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, saveTokens } from '@/lib/api';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', first_name: '', last_name: '' });
@@ -14,8 +14,8 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.auth.register(form) as { tokens: { access_token: string } };
-      localStorage.setItem('access_token', res.tokens.access_token);
+      const res = await api.auth.register(form) as { tokens: { access_token: string; refresh_token: string } };
+      saveTokens(res.tokens.access_token, res.tokens.refresh_token);
       window.location.href = '/dashboard/student';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

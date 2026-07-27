@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "change-me-in-production-use-rs256-key-pair"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours (was 15 min — caused "Invalid token" too quickly)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # OAuth2

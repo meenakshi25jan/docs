@@ -5,11 +5,53 @@ interface RequestOptions {
   method?: string;
   body?: unknown;
   token?: string;
+  skipAuthRedirect?: boolean;
 }
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+export function saveTokens(accessToken: string, refreshToken?: string) {
+  localStorage.setItem('access_token', accessToken);
+  if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+}
+
+export function clearTokens() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+}
+
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('access_token');
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { access_token: string; refresh_token: string };
+    saveTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+function redirectToLogin() {
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    clearTokens();
+    window.location.href = '/login?expired=1';
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}, retried = false): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = options.token || (typeof window !== 'undefined' ? localStorage.getItem('access_token') : null);
+  const token = options.token || getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   let res: Response;
@@ -25,12 +67,27 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     );
   }
 
+  if (res.status === 401 && !retried && !options.skipAuthRedirect) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return request<T>(endpoint, { ...options, token: newToken }, true);
+    }
+    redirectToLogin();
+    throw new Error('Session expired. Please log in again.');
+  }
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Request failed' }));
     const detail = error.detail;
-    throw new Error(
-      typeof detail === 'string' ? detail : Array.isArray(detail) ? detail[0]?.msg || 'Request failed' : `HTTP ${res.status}`
-    );
+    const message = typeof detail === 'string'
+      ? detail
+      : Array.isArray(detail)
+        ? detail[0]?.msg || 'Request failed'
+        : `HTTP ${res.status}`;
+    if (res.status === 401 && !options.skipAuthRedirect) {
+      redirectToLogin();
+    }
+    throw new Error(message);
   }
   return res.json();
 }
@@ -38,9 +95,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 export const api = {
   auth: {
     register: (data: { email: string; password: string; first_name: string; last_name: string }) =>
-      request('/auth/register', { method: 'POST', body: data }),
+      request('/auth/register', { method: 'POST', body: data, skipAuthRedirect: true }),
     login: (data: { email: string; password: string }) =>
-      request('/auth/login', { method: 'POST', body: data }),
+      request('/auth/login', { method: 'POST', body: data, skipAuthRedirect: true }),
     me: () => request('/auth/me'),
   },
   assessments: {
