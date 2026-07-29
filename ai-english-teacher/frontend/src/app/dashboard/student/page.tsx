@@ -59,6 +59,7 @@ export default function StudentDashboard() {
           <nav className="flex gap-6 text-sm">
             <a href="/dashboard/student" className="font-medium text-primary">Dashboard</a>
             <a href="/assessment" className="text-gray-600 hover:text-primary">Assessment</a>
+            <a href="/grammar-class" className="text-gray-600 hover:text-primary">Grammar Class</a>
             <a href="/conversation" className="text-gray-600 hover:text-primary">Practice</a>
           </nav>
         </div>
