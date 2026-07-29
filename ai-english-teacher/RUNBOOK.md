@@ -778,6 +778,7 @@ Upload the `.aab` to [Google Play Console](https://play.google.com/console) ($25
 | Render troubleshooting | `deploy/cheapest/RENDER_FIX.md` |
 | Neon + Vercel setup | `deploy/cheapest/NEON_VERCEL.md` |
 | System architecture | `docs/02-SYSTEM_ARCHITECTURE.md` |
+| **Complete architecture (C4 + agents + deploy)** | **`docs/ARCHITECTURE_COMPLETE.md`** |
 | API design | `docs/04-API_DESIGN.md` |
 | Production readiness | `docs/12-PRODUCTION_READINESS.md` |
 | Mobile app + Google Play | `mobile/GOOGLE_PLAY.md` |
