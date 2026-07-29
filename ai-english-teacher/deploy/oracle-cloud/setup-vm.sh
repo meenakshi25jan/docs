@@ -97,7 +97,11 @@ fi
 
 # ── 6. Deploy ─────────────────────────────────────────────────────────────────
 echo "==> Building and starting containers (5–10 minutes on first run)..."
-$DOCKER compose -f docker-compose.oracle.yml --env-file .env --profile ollama up -d --build
+if grep -q '^AI_PROVIDER=ollama' .env 2>/dev/null; then
+  $DOCKER compose -f docker-compose.oracle.yml --env-file .env --profile ollama up -d --build
+else
+  $DOCKER compose -f docker-compose.oracle.yml --env-file .env up -d --build
+fi
 
 # ── 7. Pull Ollama model (if using ollama) ───────────────────────────────────
 if grep -q '^AI_PROVIDER=ollama' .env 2>/dev/null; then
