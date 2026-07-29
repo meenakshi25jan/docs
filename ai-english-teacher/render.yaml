@@ -27,7 +27,13 @@ services:
       - key: SKIP_MIGRATIONS
         value: "true"
       - key: AI_PROVIDER
-        value: copilot
+        value: openai
+      - key: OPENAI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: OPENAI_MODEL
+        value: llama-3.1-8b-instant
+      - key: WHISPER_MODEL
+        value: whisper-large-v3-turbo
       - key: AZURE_OPENAI_DEPLOYMENT
         value: gpt-4o-mini
       - key: AZURE_OPENAI_API_VERSION

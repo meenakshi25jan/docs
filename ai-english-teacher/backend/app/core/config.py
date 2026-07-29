@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_BASE_URL: str = ""  # e.g. https://api.groq.com/openai/v1
+    WHISPER_MODEL: str = ""  # auto: whisper-large-v3-turbo (Groq) or whisper-1 (OpenAI)
 
     # LLM provider: auto | copilot | azure | openai | ollama | mock
     AI_PROVIDER: str = "auto"

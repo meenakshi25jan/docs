@@ -18,6 +18,18 @@ async def transcribe_audio(audio_base64: str, mime_type: str = "audio/webm") -> 
         return None
 
     try:
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        whisper_model = settings.WHISPER_MODEL.strip()
+        if not whisper_model:
+            base = (settings.OPENAI_BASE_URL or "").lower()
+            whisper_model = (
+                "whisper-large-v3-turbo"
+                if "groq.com" in base or ai_client.provider == "openai"
+                else "whisper-1"
+            )
+
         audio_bytes = base64.b64decode(audio_base64)
         client = ai_client._client  # noqa: SLF001
         if not client:
@@ -28,7 +40,7 @@ async def transcribe_audio(audio_base64: str, mime_type: str = "audio/webm") -> 
         file_obj.name = f"audio.{ext}"
 
         response = await client.audio.transcriptions.create(
-            model="whisper-1",
+            model=whisper_model,
             file=file_obj,
         )
         return response.text.strip() if response.text else None
