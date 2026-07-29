@@ -222,7 +222,7 @@ Expected: `28 passed`
 
 ```bash
 ssh ubuntu@YOUR_VM_IP
-curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/oracle-cloud-deploy-d164/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
+curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/main/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
 # Edit .env → set DATABASE_URL from Neon
 # Open http://YOUR_VM_IP
 ```

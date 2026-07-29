@@ -3,7 +3,7 @@
 # Tested on: Ubuntu 22.04/24.04 ARM (Ampere A1)
 #
 # Usage (on the VM as ubuntu user):
-#   curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/fullstack-vm-voice-d164/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/main/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
 #
 # Create VM (Mumbai): https://cloud.oracle.com/compute/instances/create?region=ap-mumbai-1
 # Full guide: deploy/oracle-cloud/VM_SETUP.md
@@ -12,7 +12,7 @@ set -euo pipefail
 
 echo "==> AI English Teacher — Oracle Cloud VM setup"
 echo "==> Create VM: https://cloud.oracle.com/compute/instances/create?region=ap-mumbai-1"
-echo "==> Guide: https://github.com/meenakshi25jan/docs/blob/cursor/fullstack-vm-voice-d164/ai-english-teacher/deploy/oracle-cloud/VM_SETUP.md"
+echo "==> Guide: https://github.com/meenakshi25jan/docs/blob/main/ai-english-teacher/deploy/oracle-cloud/VM_SETUP.md"
 echo ""
 
 # ── 1. System packages ───────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ sudo ufw --force enable
 # ── 4. Clone or update repo ───────────────────────────────────────────────────
 INSTALL_DIR="${INSTALL_DIR:-$HOME/docs}"
 REPO_URL="${REPO_URL:-https://github.com/meenakshi25jan/docs.git}"
-BRANCH="${BRANCH:-cursor/fullstack-vm-voice-d164}"
+BRANCH="${BRANCH:-main}"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   echo "==> Updating existing repo at $INSTALL_DIR"

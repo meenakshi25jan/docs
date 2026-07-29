@@ -241,7 +241,7 @@ docker --version
 ### E3. Clone app
 
 ```bash
-git clone --branch cursor/fullstack-vm-voice-d164 https://github.com/meenakshi25jan/docs.git
+git clone --branch main https://github.com/meenakshi25jan/docs.git
 cd docs/ai-english-teacher/deploy/oracle-cloud
 ```
 
@@ -317,7 +317,7 @@ curl http://localhost/health/ai
 On your PC:
 
 ```bash
-git clone --branch cursor/fullstack-vm-voice-d164 https://github.com/meenakshi25jan/docs.git
+git clone --branch main https://github.com/meenakshi25jan/docs.git
 cd docs/ai-english-teacher/mobile
 npm install
 ```
