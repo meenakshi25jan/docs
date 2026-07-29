@@ -158,3 +158,28 @@ Or from Render shell / locally:
 ```bash
 cd ai-english-teacher/backend && DATABASE_URL='your-neon-url' python3 scripts/migrate.py
 ```
+
+---
+
+## "connection is closed" when starting conversation
+
+Happens when Render or Neon wakes from sleep and the API tries to reuse a dead PostgreSQL connection.
+
+### Fix
+
+1. Deploy the latest API (`pool_pre_ping` + `pool_recycle` fix on `main`).
+2. In **ai-english-teacher-api** → **Environment**, use your Neon **pooler** URL (recommended):
+   ```
+   postgresql://user:pass@ep-xxxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+   ```
+   In Neon dashboard: **Connection details** → enable **Connection pooling** → copy that URL.
+3. Optional pool settings (already in `render.yaml` for Blueprint deploys):
+
+| Key | Value |
+|-----|-------|
+| `DATABASE_POOL_SIZE` | `5` |
+| `DATABASE_MAX_OVERFLOW` | `5` |
+| `DATABASE_POOL_RECYCLE` | `280` |
+| `DATABASE_POOL_PRE_PING` | `true` |
+
+4. **Manual Deploy** the API, open `/health` to wake it, then retry **Start conversation**.

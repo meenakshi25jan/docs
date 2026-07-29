@@ -22,6 +22,14 @@ services:
         generateValue: true
       - key: DATABASE_URL
         sync: false
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "5"
+      - key: DATABASE_POOL_RECYCLE
+        value: "280"
+      - key: DATABASE_POOL_PRE_PING
+        value: "true"
       - key: CORS_ORIGINS
         value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
       - key: SKIP_MIGRATIONS
