@@ -28,7 +28,7 @@ python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
 **Root Directory:** `ai-english-teacher/backend`
 
-**Branch:** `cursor/cheapest-cloud-deploy-d164`
+**Branch:** `main`
 
 Click **Save Changes**.
 
@@ -98,7 +98,7 @@ This also removes the cold-start screen permanently.
 
 ## Quick checklist
 
-- [ ] Branch = `cursor/cheapest-cloud-deploy-d164`
+- [ ] Branch = `main`
 - [ ] Root Directory = `ai-english-teacher/backend`
 - [ ] Build uses `requirements-render.txt`
 - [ ] Start command uses `python3 -m uvicorn`
@@ -117,7 +117,7 @@ The homepage and `/dashboard/student` work but newer pages return **404** when t
 
 1. Open https://dashboard.render.com → **ai-english-teacher-web**
 2. **Settings** → confirm:
-   - **Branch:** `cursor/cheapest-cloud-deploy-d164`
+   - **Branch:** `main`
    - **Root Directory:** `ai-english-teacher/frontend`
    - **Build Command:** `npm install && npm run build`
    - **Start Command:** `npm start`
@@ -138,7 +138,7 @@ Usually caused by **CORS** or the API **cold start** on Render free tier.
    ```
    ["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]
    ```
-3. **Manual Deploy** → Deploy latest commit on `cursor/cheapest-cloud-deploy-d164`
+3. **Manual Deploy** → Deploy latest commit on `main`
 4. Wait 30–60 seconds after deploy, then retry registration
 
 If it still fails, open https://ai-english-teacher-api.onrender.com/health first to wake the API, then register again.
