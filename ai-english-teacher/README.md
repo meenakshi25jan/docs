@@ -6,16 +6,17 @@ A production-ready, cloud-native AI-powered English learning platform supporting
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS, ShadCN UI |
-| Backend | FastAPI (Python 3.12), async architecture |
-| Database | PostgreSQL 16 + pgvector |
-| Cache | Redis 7 |
-| AI | Azure OpenAI GPT-5.5 (with OpenAI abstraction layer) |
-| Speech | Azure Speech Services + Whisper |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
+| Mobile | Expo React Native (Android) |
+| Backend | FastAPI (Python 3.12), LangGraph orchestration |
+| Database | PostgreSQL 16 + pgvector (Neon) |
+| Cache | Redis 7 (optional, Oracle VM) |
+| AI | Groq / Azure OpenAI / Ollama (provider abstraction) |
+| Speech | Groq Whisper + browser Web Speech API |
 | Auth | JWT, OAuth2 (Google, Microsoft) |
-| Deployment | Docker, Kubernetes (AKS/EKS), Terraform |
-| Monitoring | Application Insights, Prometheus, Grafana |
-| CI/CD | GitHub Actions |
+| Deployment | Render + Neon ($0), Oracle Cloud VM, Fly.io, Azure AKS |
+
+**Full architecture (C4 diagrams, agent flows, deployment plans):** **[docs/ARCHITECTURE_COMPLETE.md](docs/ARCHITECTURE_COMPLETE.md)**
 
 ## Quick Start
 
