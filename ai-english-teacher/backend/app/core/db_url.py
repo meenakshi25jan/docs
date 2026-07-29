@@ -48,6 +48,10 @@ def prepare_asyncpg_url(database_url: str) -> tuple[str, dict[str, Any]]:
     return clean.render_as_string(hide_password=False), connect_args
 
 
+def is_neon_database_url(database_url: str) -> bool:
+    return "neon.tech" in database_url.lower()
+
+
 def prepare_asyncpg_dsn(database_url: str) -> tuple[str, dict[str, Any]]:
     """Plain postgresql:// DSN for asyncpg.connect() (migrate script)."""
     sqlalchemy_url, connect_args = prepare_asyncpg_url(database_url)

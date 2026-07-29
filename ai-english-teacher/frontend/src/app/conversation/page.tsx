@@ -102,6 +102,7 @@ export default function ConversationPage() {
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard/student" className="text-blue-600 font-bold">← AI English Teacher</Link>
         <div className="flex items-center gap-4 text-sm text-gray-500">
+          <Link href="/grammar-class" className="text-blue-600 hover:underline">Grammar Class</Link>
           {ttsSupported && (
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={autoSpeak} onChange={e => setAutoSpeak(e.target.checked)} />

@@ -8,6 +8,7 @@ services:
     runtime: python
     region: oregon
     plan: free
+    branch: main
     rootDir: ai-english-teacher/backend
     buildCommand: |
       pip install -r requirements-render.txt
@@ -22,6 +23,14 @@ services:
         generateValue: true
       - key: DATABASE_URL
         sync: false
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "5"
+      - key: DATABASE_POOL_RECYCLE
+        value: "280"
+      - key: DATABASE_POOL_PRE_PING
+        value: "true"
       - key: CORS_ORIGINS
         value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
       - key: SKIP_MIGRATIONS
@@ -51,6 +60,7 @@ services:
     runtime: node
     region: oregon
     plan: free
+    branch: main
     rootDir: ai-english-teacher/frontend
     buildCommand: npm install && npm run build
     startCommand: npm start
