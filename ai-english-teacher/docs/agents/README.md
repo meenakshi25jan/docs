@@ -40,12 +40,12 @@ V2.0 domain-driven agent architecture for the AI English Teacher platform. Each 
 
 | # | Agent | Status |
 |---|-------|--------|
-| 08 | [Pronunciation](./08-pronunciation-agent.md) | planned |
-| 09 | [Fluency](./09-fluency-agent.md) | planned |
+| 08 | [Pronunciation](./08-pronunciation-agent.md) | **mvp** |
+| 09 | [Fluency](./09-fluency-agent.md) | **mvp** |
 | 10 | [Grammar](./10-grammar-agent.md) | partial |
 | 11 | [Vocabulary](./11-vocabulary-agent.md) | partial |
-| 12 | [Accent](./12-accent-agent.md) | planned |
-| 13 | [Speech Quality](./13-speech-quality-agent.md) | planned |
+| 12 | [Accent](./12-accent-agent.md) | **mvp** |
+| 13 | [Speech Quality](./13-speech-quality-agent.md) | **mvp** |
 
 ### Wave 3 — Emotional Intelligence
 
@@ -107,14 +107,16 @@ Wave 1 LangGraph orchestration is **implemented (MVP)** in `backend/app/orchestr
 | 03 Context Manager | `context_manager.py` | Merges history, memory, RAG |
 | 04 Conversation | `conversation_agent.py` | Greetings / light chat |
 | 05 Teacher | `agents/__init__.py` | Existing TeacherAgent |
-| 06 Memory | `memory_agent.py` | Session memory (PostgreSQL TBD) |
-| 07 RAG | `rag_agent.py` | Keyword MVP (Qdrant TBD) |
+| 06 Memory | `memory_agent.py` + `memory_store.py` | PostgreSQL + Redis session |
+| 07 RAG | `rag_agent.py` + `knowledge_store.py` | pgvector + keyword fallback |
 | 32 Moderation | `moderation.py` | Input/output safety gate |
 | 38 Cost Optimization | `cost_router.py` | Model tier hints |
 
 Conversations API uses `run_conversation_turn()` from `orchestration/runner.py`.
 
-**Remaining Wave 1 work:** Qdrant vector search, PostgreSQL memory persistence, voice session state, audit trail.
+**Remaining Wave 1 work:** Qdrant option for multi-tenant scale, voice session state in Redis, audit trail.
+
+**Wave 2 MVP:** Voice pipeline in `orchestration/voice/` + `POST /api/v1/voice/analyze` (Whisper + fluency + pronunciation + grammar + vocabulary).
 
 ## Spec Document Structure
 

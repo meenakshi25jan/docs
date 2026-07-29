@@ -115,4 +115,12 @@ export const api = {
   dashboard: {
     student: () => request('/dashboard/student'),
   },
+  voice: {
+    analyze: (data: {
+      transcript?: string;
+      audio_base64?: string;
+      duration_seconds?: number;
+      conversation_id?: string;
+    }) => request('/voice/analyze', { method: 'POST', body: data }),
+  },
 };

@@ -62,7 +62,12 @@ async def node_orchestrate(state: ConversationState) -> dict[str, Any]:
 async def node_recall_memory(state: ConversationState) -> dict[str, Any]:
     if state.get("blocked"):
         return {}
-    memories, recent_errors = await recall_memories(state["session_id"], state["learner_id"])
+    memories, recent_errors = await recall_memories(
+        state["session_id"],
+        state["learner_id"],
+        tenant_id=state.get("tenant_id"),
+        query=state.get("message"),
+    )
     return {
         "memories": memories,
         "recent_errors": recent_errors,
@@ -77,6 +82,7 @@ async def node_rag(state: ConversationState) -> dict[str, Any]:
         state.get("message", ""),
         scenario=state.get("scenario", ""),
         top_k=3,
+        tenant_id=state.get("tenant_id"),
     )
     return {"rag_chunks": chunks, "agent_path": _append_path(state, "RAGAgent")}
 
@@ -137,7 +143,12 @@ async def node_store_memory(state: ConversationState) -> dict[str, Any]:
     if state.get("blocked"):
         return {}
     output = state.get("agent_output", {})
-    await store_from_teacher_output(state["session_id"], state["learner_id"], output)
+    await store_from_teacher_output(
+        state["session_id"],
+        state["learner_id"],
+        output,
+        tenant_id=state.get("tenant_id"),
+    )
     session = await merge_session(state["session_id"], {})
     await merge_session(state["session_id"], {
         "last_intent": state.get("intent"),

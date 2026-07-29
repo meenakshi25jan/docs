@@ -16,6 +16,7 @@ from app.api.v1.extended import (
     dashboard_router,
     reports_router,
 )
+from app.api.v1.voice import router as voice_router
 
 settings = get_settings()
 
@@ -50,6 +51,7 @@ app.include_router(writing_router, prefix=API_PREFIX)
 app.include_router(plans_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(reports_router, prefix=API_PREFIX)
+app.include_router(voice_router, prefix=API_PREFIX)
 
 try:
     from prometheus_client import make_asgi_app
