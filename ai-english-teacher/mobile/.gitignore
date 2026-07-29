@@ -1,0 +1,24 @@
+# Expo / local
+.expo/
+dist/
+web-build/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Native
+android/
+ios/
+*.jks
+*.keystore
+google-play-service-account.json
+
+# OS
+.DS_Store
+
+# EAS
+*.mobileprovision

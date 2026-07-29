@@ -30,6 +30,7 @@
 10. [Production Checklist](#10-production-checklist)
 11. [Cost Tiers](#11-cost-tiers)
 12. [App Routes & API Reference](#12-app-routes--api-reference)
+13. [Mobile App (Google Play)](#16-mobile-app-google-play)
 
 ---
 
@@ -215,7 +216,7 @@ Expected: `28 passed`
 | VM (API + frontend + Redis + Ollama) | Oracle Cloud Ampere A1 (free) |
 | PostgreSQL | Neon (free) |
 
-**Full guide:** [deploy/oracle-cloud/OCI_DEPLOY.md](deploy/oracle-cloud/OCI_DEPLOY.md)
+**Full guide:** [deploy/oracle-cloud/VM_SETUP.md](deploy/oracle-cloud/VM_SETUP.md) (step-by-step OCI console)
 
 **Quick start on a new Ubuntu ARM VM:**
 
@@ -734,6 +735,41 @@ Use **Chrome or Edge** for full voice practice.
 
 ---
 
+## 16. Mobile App (Google Play)
+
+Android app in `mobile/` — built with **Expo React Native**.
+
+| Feature | Screen |
+|---------|--------|
+| Login / Register | Secure token storage (Keychain) |
+| Dashboard | CEFR, IELTS, PTE, skill scores |
+| AI Practice | Role-play chat + text-to-speech |
+| Assessment | Placement test |
+
+### Development
+
+```bash
+cd ai-english-teacher/mobile
+npm install
+cp .env.example .env   # set EXPO_PUBLIC_API_URL
+npm start              # scan QR with Expo Go on Android
+```
+
+### Publish to Google Play
+
+Full guide: **[mobile/GOOGLE_PLAY.md](mobile/GOOGLE_PLAY.md)**
+
+```bash
+npm install -g eas-cli
+eas login
+cd ai-english-teacher/mobile
+eas build --platform android --profile production
+```
+
+Upload the `.aab` to [Google Play Console](https://play.google.com/console) ($25 one-time developer fee).
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -744,6 +780,8 @@ Use **Chrome or Edge** for full voice practice.
 | System architecture | `docs/02-SYSTEM_ARCHITECTURE.md` |
 | API design | `docs/04-API_DESIGN.md` |
 | Production readiness | `docs/12-PRODUCTION_READINESS.md` |
+| Mobile app + Google Play | `mobile/GOOGLE_PLAY.md` |
+| Oracle Cloud VM | `deploy/oracle-cloud/VM_SETUP.md` |
 
 ---
 
