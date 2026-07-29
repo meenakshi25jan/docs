@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.ai.openai_client import extract_teacher_response
-from app.agents.base import AgentInput
-from app.agents import AGENT_REGISTRY
+from app.orchestration import run_conversation_turn
 from app.core.database import get_db
 from app.core.security import TokenPayload, get_current_user
 from app.models import Conversation, ConversationMessage, LearnerProfile
@@ -39,18 +38,22 @@ async def start_conversation(
     db.add(conv)
     await db.flush()
 
-    teacher = AGENT_REGISTRY["teacher"]
-    output = await teacher.execute(AgentInput(
+    output = await run_conversation_turn(
+        session_id=str(conv.id),
         learner_id=str(learner.id),
-        context={
-            "scenario": req.scenario,
-            "cefr_level": learner.current_cefr or "B1",
-            "message": "Start the conversation.",
-            "message_history": [],
-        },
-    ))
+        tenant_id=str(user.tenant_id) if user.tenant_id else None,
+        scenario=req.scenario,
+        cefr_level=learner.current_cefr or "B1",
+        message="Start the conversation.",
+        message_history=[],
+    )
     initial_content = extract_teacher_response(output.data) or "Hello! Let's begin our practice session."
-    msg = ConversationMessage(conversation_id=conv.id, role="assistant", content=initial_content)
+    msg = ConversationMessage(
+        conversation_id=conv.id,
+        role="assistant",
+        content=initial_content,
+        metadata_=output.data,
+    )
     db.add(msg)
     await db.flush()
 
@@ -80,23 +83,25 @@ async def send_message(
     db.add(user_msg)
 
     history = [{"role": m.role, "content": m.content} for m in conv.messages]
-    teacher = AGENT_REGISTRY["teacher"]
-    output = await teacher.execute(AgentInput(
+    output = await run_conversation_turn(
+        session_id=str(conv.id),
         learner_id=str(learner.id),
-        context={
-            "scenario": conv.scenario,
-            "cefr_level": learner.current_cefr or "B1",
-            "message": req.content,
-            "message_history": history,
-        },
-    ))
+        tenant_id=str(user.tenant_id) if user.tenant_id else None,
+        scenario=conv.scenario,
+        cefr_level=learner.current_cefr or "B1",
+        message=req.content,
+        message_history=history,
+    )
 
     assistant_content = extract_teacher_response(output.data) or "Could you tell me more about that?"
+    response_metadata = dict(output.data)
+    if output.metadata:
+        response_metadata["_orchestration"] = output.metadata
     assistant_msg = ConversationMessage(
         conversation_id=conv.id,
         role="assistant",
         content=assistant_content,
-        metadata_=output.data,
+        metadata_=response_metadata,
     )
     db.add(assistant_msg)
     await db.flush()
@@ -106,6 +111,6 @@ async def send_message(
         "assistant_message": MessageResponse(
             role="assistant",
             content=assistant_content,
-            metadata=output.data,
+            metadata=response_metadata,
         ),
     }
