@@ -472,7 +472,7 @@ INFO:     Application startup complete.
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| **404 on `/conversation`, `/login`, `/register`** | Stale frontend build | Manual Deploy on `ai-english-teacher-web` with latest commit |
+| **404 on `/grammar-class`** | Web deploy failed (Docker/ESLint) | Redeploy **ai-english-teacher-web** from `main`; check Events for build errors |
 | **Only `/` and `/dashboard/student` work** | Old build before pages were added | Redeploy frontend; build log should list all 8 routes |
 
 ### Auth errors
