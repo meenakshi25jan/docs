@@ -21,6 +21,8 @@
 3. [Environment Variables](#3-environment-variables)
 4. [Local Development](#4-local-development)
 5. [Cloud Deployment ($0/month)](#5-cloud-deployment-0month)
+   - [Oracle Cloud (recommended for Ollama)](#oracle-cloud-always-free)
+   - [Render + Neon](#render--neon)
 6. [Database Migrations](#6-database-migrations)
 7. [Smoke Tests & Verification](#7-smoke-tests--verification)
 8. [Complete Error Catalog](#8-complete-error-catalog)
@@ -40,6 +42,7 @@
 | **GitHub** | Source code | https://github.com | Free |
 | **Neon** | PostgreSQL + pgvector | https://neon.tech | Free (0.5 GB) |
 | **Render** | API + frontend hosting | https://render.com | Free tier |
+| **Oracle Cloud** | Always-on VM + Ollama | https://oracle.com/cloud/free | **$0** (4 ARM cores, 24 GB) |
 | **Vercel** *(optional)* | Faster frontend CDN | https://vercel.com | Free hobby |
 
 ### Tools (local development)
@@ -202,6 +205,32 @@ Expected: `28 passed`
 ---
 
 ## 5. Cloud Deployment ($0/month)
+
+### Oracle Cloud (Always Free)
+
+**Best for:** always-on server, local **Ollama** LLM, no cold starts.
+
+| Component | Provider |
+|-----------|----------|
+| VM (API + frontend + Redis + Ollama) | Oracle Cloud Ampere A1 (free) |
+| PostgreSQL | Neon (free) |
+
+**Full guide:** [deploy/oracle-cloud/OCI_DEPLOY.md](deploy/oracle-cloud/OCI_DEPLOY.md)
+
+**Quick start on a new Ubuntu ARM VM:**
+
+```bash
+ssh ubuntu@YOUR_VM_IP
+curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/oracle-cloud-deploy-d164/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
+# Edit .env → set DATABASE_URL from Neon
+# Open http://YOUR_VM_IP
+```
+
+Don't forget OCI Console → VCN → Security List → open ports **80** and **443**.
+
+---
+
+### Render + Neon
 
 ### Architecture
 

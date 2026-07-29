@@ -100,6 +100,8 @@ The live app (`backend/app/agents/`) has 9 agent stubs in `AGENT_REGISTRY`:
 
 Wave 1 (Orchestrator, Session Manager, Context Manager, Memory, RAG) and LangGraph orchestration are the next implementation priority.
 
+**Wave 1 status (implemented):** LangGraph pipeline in `backend/app/orchestration/` — Orchestrator, Session Manager (Redis + memory fallback), Context Manager, Conversation Agent, Memory Agent, RAG Agent (keyword MVP), Moderation gate, Cost router. Conversations API uses `run_conversation_turn()`.
+
 ## Spec Document Structure
 
 Every agent spec (`NN-name-agent.md`) includes:

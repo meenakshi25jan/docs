@@ -134,7 +134,7 @@ Without AI keys, the platform runs in **mock mode** (returns sample scores).
 | Azure AKS (original design) | ~$8,100 | Production scale |
 | AWS EKS | ~$7,500 | Production scale |
 | Hetzner VPS (CX22) | ~€4 | DIY docker-compose |
-| Oracle Cloud Free | $0 | 4 ARM cores, complex setup |
+| **Oracle Cloud Free** | **$0** | 4 ARM cores, 24 GB — [OCI guide](../oracle-cloud/OCI_DEPLOY.md) |
 
 ---
 

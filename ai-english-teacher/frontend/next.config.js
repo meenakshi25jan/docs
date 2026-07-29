@@ -5,6 +5,7 @@ const API_PROXY_TARGET =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   // Monorepo: trace files from repo root so all app routes ship in production.
   outputFileTracingRoot: path.join(__dirname, '../..'),
   env: {
