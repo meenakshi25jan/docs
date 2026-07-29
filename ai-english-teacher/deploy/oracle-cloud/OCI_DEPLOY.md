@@ -64,6 +64,8 @@ Deploy the AI English Teacher platform on **Oracle Cloud Infrastructure Always F
 
 ### Step 3 — SSH into VM and run setup
 
+**Detailed VM guide:** [VM_SETUP.md](VM_SETUP.md) (click-by-click OCI console instructions)
+
 ```bash
 ssh ubuntu@YOUR_VM_PUBLIC_IP
 
@@ -74,7 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/oracle-c
 When prompted, edit `.env` and set `DATABASE_URL`:
 
 ```bash
-nano ~/ai-english-teacher/ai-english-teacher/deploy/oracle-cloud/.env
+nano ~/docs/ai-english-teacher/deploy/oracle-cloud/.env
 ```
 
 Set at minimum:
