@@ -48,7 +48,7 @@ sudo ufw --force enable
 # ── 4. Clone or update repo ───────────────────────────────────────────────────
 INSTALL_DIR="${INSTALL_DIR:-$HOME/docs}"
 REPO_URL="${REPO_URL:-https://github.com/meenakshi25jan/docs.git}"
-BRANCH="${BRANCH:-cursor/oracle-cloud-deploy-d164}"
+BRANCH="${BRANCH:-cursor/fullstack-vm-voice-d164}"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   echo "==> Updating existing repo at $INSTALL_DIR"

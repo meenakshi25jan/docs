@@ -16,6 +16,7 @@ interface Message {
   role: string;
   content: string;
   corrections?: Array<{ text?: string; correction?: string; note?: string }>;
+  voiceScore?: number;
 }
 
 export default function ConversationPage() {
@@ -26,6 +27,7 @@ export default function ConversationPage() {
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [lastVoiceReport, setLastVoiceReport] = useState<{ fluency: number; pronunciation: number; overall_score: number } | null>(null);
   const { listen, speak, listening, sttSupported, ttsSupported } = useVoice();
 
   function addAssistantMessage(content: string, metadata?: Record<string, unknown>) {
@@ -52,10 +54,10 @@ export default function ConversationPage() {
     }
   }
 
-  async function submitText(userMsg: string) {
+  async function submitText(userMsg: string, voiceScore?: number) {
     if (!userMsg.trim() || !conversationId) return;
     setLoading(true);
-    setMessages(prev => [...prev, { role: 'user', content: userMsg.trim() }]);
+    setMessages(prev => [...prev, { role: 'user', content: userMsg.trim(), voiceScore }]);
     try {
       const res = await api.conversations.sendMessage(conversationId, userMsg.trim()) as {
         assistant_message: { content: string; metadata?: Record<string, unknown> };
@@ -78,9 +80,18 @@ export default function ConversationPage() {
 
   function handleVoiceInput() {
     listen(
-      (text) => {
+      async (text) => {
         setInput(text);
-        submitText(text);
+        try {
+          const report = await api.voice.analyze({
+            transcript: text,
+            conversation_id: conversationId || undefined,
+          }) as { fluency: number; pronunciation: number; overall_score: number };
+          setLastVoiceReport(report);
+          await submitText(text, report.overall_score);
+        } catch {
+          await submitText(text);
+        }
       },
       (msg) => alert(msg)
     );
@@ -123,6 +134,11 @@ export default function ConversationPage() {
           </div>
         ) : (
           <>
+            {lastVoiceReport && (
+              <div className="mb-3 text-xs bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-green-800 text-center">
+                Voice score: {lastVoiceReport.overall_score}/100 · Fluency {lastVoiceReport.fluency} · Pronunciation {lastVoiceReport.pronunciation}
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto space-y-4 mb-4">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -130,6 +146,9 @@ export default function ConversationPage() {
                     msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border'
                   }`}>
                     <p>{msg.content}</p>
+                    {msg.voiceScore != null && (
+                      <p className="mt-1 text-xs opacity-80">🎤 Score: {msg.voiceScore}</p>
+                    )}
                     {msg.role === 'assistant' && ttsSupported && (
                       <button type="button" onClick={() => speak(msg.content)}
                         className="mt-2 text-xs text-blue-600 hover:underline">

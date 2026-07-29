@@ -216,7 +216,7 @@ Expected: `28 passed`
 | VM (API + frontend + Redis + Ollama) | Oracle Cloud Ampere A1 (free) |
 | PostgreSQL | Neon (free) |
 
-**Full guide:** [deploy/oracle-cloud/VM_SETUP.md](deploy/oracle-cloud/VM_SETUP.md) (step-by-step OCI console)
+**Full guide:** [deploy/oracle-cloud/FULL_STACK_DEPLOY.md](deploy/oracle-cloud/FULL_STACK_DEPLOY.md) (web + mobile + API on one VM)
 
 **Quick start on a new Ubuntu ARM VM:**
 

@@ -131,4 +131,13 @@ export const api = {
     create: (data: { duration_weeks: number; target_exam: string; target_score: number }) =>
       request('/learning-plans', { method: 'POST', body: data }),
   },
+  voice: {
+    analyze: (data: {
+      transcript?: string;
+      audio_base64?: string;
+      audio_mime_type?: string;
+      duration_seconds?: number;
+      conversation_id?: string;
+    }) => request('/voice/analyze', { method: 'POST', body: data }),
+  },
 };
