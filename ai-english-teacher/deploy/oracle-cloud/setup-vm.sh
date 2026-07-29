@@ -3,14 +3,16 @@
 # Tested on: Ubuntu 22.04/24.04 ARM (Ampere A1)
 #
 # Usage (on the VM as ubuntu user):
-#   curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/oracle-cloud-deploy-d164/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/fullstack-vm-voice-d164/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
 #
+# Create VM (Mumbai): https://cloud.oracle.com/compute/instances/create?region=ap-mumbai-1
 # Full guide: deploy/oracle-cloud/VM_SETUP.md
 
 set -euo pipefail
 
 echo "==> AI English Teacher — Oracle Cloud VM setup"
-echo "==> Guide: https://github.com/meenakshi25jan/docs/blob/cursor/oracle-cloud-deploy-d164/ai-english-teacher/deploy/oracle-cloud/VM_SETUP.md"
+echo "==> Create VM: https://cloud.oracle.com/compute/instances/create?region=ap-mumbai-1"
+echo "==> Guide: https://github.com/meenakshi25jan/docs/blob/cursor/fullstack-vm-voice-d164/ai-english-teacher/deploy/oracle-cloud/VM_SETUP.md"
 echo ""
 
 # ── 1. System packages ───────────────────────────────────────────────────────

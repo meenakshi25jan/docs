@@ -39,11 +39,15 @@ Deploy **everything** on one **Oracle Cloud Always Free** VM:
 
 ## Step 1 — Create Oracle Cloud VM
 
-See [VM_SETUP.md](./VM_SETUP.md) for click-by-click instructions.
+**Mumbai (India West) direct link:**  
+https://cloud.oracle.com/compute/instances/create?region=ap-mumbai-1
+
+See [VM_SETUP.md](./VM_SETUP.md) for the full click-by-click wizard (all 4 steps).
 
 **Quick settings:**
-- Ubuntu 24.04 ARM (aarch64)
-- VM.Standard.A1.Flex — **2 OCPU, 12 GB RAM**
+- Image: **Ubuntu 24.04 Minimal aarch64**
+- Shape: Ampere **VM.Standard.A1.Flex** — **1 OCPU / 6 GB** (~50 users + Groq) or **2 OCPU / 12 GB** (Ollama)
+- Networking: **Create new VCN** + **Create new public subnet** + **Public IPv4 ON**
 - Open ports **80**, **443**, **22** in Security List
 
 ---

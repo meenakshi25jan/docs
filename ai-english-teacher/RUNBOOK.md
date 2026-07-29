@@ -43,7 +43,7 @@
 | **GitHub** | Source code | https://github.com | Free |
 | **Neon** | PostgreSQL + pgvector | https://neon.tech | Free (0.5 GB) |
 | **Render** | API + frontend hosting | https://render.com | Free tier |
-| **Oracle Cloud** | Always-on VM + Ollama | https://oracle.com/cloud/free | **$0** (4 ARM cores, 24 GB) |
+| **Oracle Cloud** | Always-on VM + Ollama | https://cloud.oracle.com/compute/instances/create?region=ap-mumbai-1 | **$0** (2 OCPU, 12 GB ARM) |
 | **Vercel** *(optional)* | Faster frontend CDN | https://vercel.com | Free hobby |
 
 ### Tools (local development)
