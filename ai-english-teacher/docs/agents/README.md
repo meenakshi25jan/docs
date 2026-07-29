@@ -28,13 +28,13 @@ V2.0 domain-driven agent architecture for the AI English Teacher platform. Each 
 
 | # | Agent | Status |
 |---|-------|--------|
-| 01 | [Orchestrator](./01-orchestrator-agent.md) | planned |
-| 02 | [Session Manager](./02-session-manager-agent.md) | planned |
-| 03 | [Context Manager](./03-context-manager-agent.md) | planned |
-| 04 | [Conversation](./04-conversation-agent.md) | planned |
-| 05 | [Teacher](./05-teacher-agent.md) | partial |
-| 06 | [Memory](./06-memory-agent.md) | planned |
-| 07 | [RAG](./07-rag-agent.md) | planned |
+| 01 | [Orchestrator](./01-orchestrator-agent.md) | **mvp** |
+| 02 | [Session Manager](./02-session-manager-agent.md) | **mvp** |
+| 03 | [Context Manager](./03-context-manager-agent.md) | **mvp** |
+| 04 | [Conversation](./04-conversation-agent.md) | **mvp** |
+| 05 | [Teacher](./05-teacher-agent.md) | **partial** |
+| 06 | [Memory](./06-memory-agent.md) | **mvp** |
+| 07 | [RAG](./07-rag-agent.md) | **mvp** |
 
 ### Wave 2 — Voice Intelligence
 
@@ -84,13 +84,13 @@ V2.0 domain-driven agent architecture for the AI English Teacher platform. Each 
 
 | # | Agent | Status |
 |---|-------|--------|
-| 32 | [Moderation](./32-moderation-agent.md) | planned |
+| 32 | [Moderation](./32-moderation-agent.md) | **mvp** |
 | 33 | [Hallucination Checker](./33-hallucination-checker-agent.md) | planned |
 | 34 | [Citation](./34-citation-agent.md) | planned |
 | 35 | [Privacy](./35-privacy-agent.md) | planned |
 | 36 | [Policy](./36-policy-agent.md) | planned |
 | 37 | [Compliance](./37-compliance-agent.md) | planned |
-| 38 | [Cost Optimization](./38-cost-optimization-agent.md) | planned |
+| 38 | [Cost Optimization](./38-cost-optimization-agent.md) | **mvp** |
 
 ## Current V1 Implementation
 
@@ -98,9 +98,23 @@ The live app (`backend/app/agents/`) has 9 agent stubs in `AGENT_REGISTRY`:
 
 `teacher`, `assessment`, `grammar`, `vocabulary`, `writing`, `speaking`, `planner`, `progress`, `report`
 
-Wave 1 (Orchestrator, Session Manager, Context Manager, Memory, RAG) and LangGraph orchestration are the next implementation priority.
+Wave 1 LangGraph orchestration is **implemented (MVP)** in `backend/app/orchestration/`:
 
-**Wave 1 status (implemented):** LangGraph pipeline in `backend/app/orchestration/` — Orchestrator, Session Manager (Redis + memory fallback), Context Manager, Conversation Agent, Memory Agent, RAG Agent (keyword MVP), Moderation gate, Cost router. Conversations API uses `run_conversation_turn()`.
+| Agent | Module | Status |
+|-------|--------|--------|
+| 01 Orchestrator | `orchestrator.py` + `graph.py` | Intent routing, LangGraph root |
+| 02 Session Manager | `session_manager.py` | Redis + in-memory fallback |
+| 03 Context Manager | `context_manager.py` | Merges history, memory, RAG |
+| 04 Conversation | `conversation_agent.py` | Greetings / light chat |
+| 05 Teacher | `agents/__init__.py` | Existing TeacherAgent |
+| 06 Memory | `memory_agent.py` | Session memory (PostgreSQL TBD) |
+| 07 RAG | `rag_agent.py` | Keyword MVP (Qdrant TBD) |
+| 32 Moderation | `moderation.py` | Input/output safety gate |
+| 38 Cost Optimization | `cost_router.py` | Model tier hints |
+
+Conversations API uses `run_conversation_turn()` from `orchestration/runner.py`.
+
+**Remaining Wave 1 work:** Qdrant vector search, PostgreSQL memory persistence, voice session state, audit trail.
 
 ## Spec Document Structure
 

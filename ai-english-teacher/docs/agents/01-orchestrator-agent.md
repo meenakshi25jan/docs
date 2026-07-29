@@ -4,7 +4,7 @@
 |-------|-------|
 | **Wave** | 1 |
 | **Priority** | P0 |
-| **Status** | `planned` |
+| **Status** | `mvp` |
 | **LangGraph Node** | Root Node |
 | **Primary Model** | GPT-4o-mini |
 
@@ -82,4 +82,4 @@ Tenant isolation; no PII in routing logs
 
 ## Implementation Notes
 
-Not implemented. Replace ad-hoc API routing in `conversations.py`.
+Implemented in `backend/app/orchestration/orchestrator.py` and `graph.py`. Routes greetings → ConversationAgent, teaching → TeacherAgent. LangGraph root node with moderation gate.
