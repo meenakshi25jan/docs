@@ -1,0 +1,21 @@
+# Backend API — Docker deploy on Render ($0 free tier)
+# Blueprint path: ai-english-teacher/render-backend.yaml
+
+services:
+  - type: web
+    name: ai-english-teacher-api
+    runtime: docker
+    region: ohio
+    plan: free
+    rootDir: ai-english-teacher
+    dockerfilePath: backend/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
+      - key: SKIP_MIGRATIONS
+        value: "true"

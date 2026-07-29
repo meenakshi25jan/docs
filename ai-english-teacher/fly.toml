@@ -1,0 +1,33 @@
+# Fly.io — backend API (~$0–3/month on shared-cpu-1x)
+# Cheapest when paired with free Neon PostgreSQL (no Fly Postgres fees)
+
+app = "ai-english-teacher-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[build.args]
+  # Build context is repo ai-english-teacher/ root
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 50
+    soft_limit = 25
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[env]
+  MIGRATIONS_DIR = "/app/migrations"
+  REQUIRE_MIGRATIONS = "false"
+
+# Set secrets via: fly secrets set DATABASE_URL=... JWT_SECRET_KEY=... CORS_ORIGINS=...
