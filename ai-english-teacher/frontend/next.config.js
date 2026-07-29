@@ -8,6 +8,13 @@ const nextConfig = {
   output: 'standalone',
   // Monorepo: trace files from repo root so all app routes ship in production.
   outputFileTracingRoot: path.join(__dirname, '../..'),
+  // Repo root has unrelated .eslintrc (Amplify docs) — don't fail Render builds.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
   },
