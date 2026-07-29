@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_english_teacher"
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
+    # Recycle before Neon/serverless closes idle connections (~5 min)
+    DATABASE_POOL_RECYCLE: int = 280
+    DATABASE_POOL_PRE_PING: bool = True
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

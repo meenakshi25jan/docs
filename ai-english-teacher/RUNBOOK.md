@@ -451,6 +451,7 @@ INFO:     Application startup complete.
 | **Connection refused / SSL error** | Missing SSL param | Keep `?sslmode=require` in Neon URL — app strips it and sets `ssl=True` for asyncpg |
 | **`connect() got an unexpected keyword argument 'sslmode'`** | asyncpg rejects sslmode query param | Deploy latest API code (`db_url.py` fix) |
 | **`relation "users" does not exist`** | Migrations not run | Run `python3 scripts/migrate.py` against Neon |
+| **`connection is closed` on `SET LOCAL app.tenant_id`** | Stale pool after Neon/Render sleep | Deploy latest API (`pool_pre_ping`); use Neon **pooler** URL (`-pooler.neon.tech`) |
 | **HTTP 500 on register/login** | RLS or bcrypt issue | Deploy latest code + run migration `003_auth_rls.sql` |
 
 ### CORS & Frontend API errors

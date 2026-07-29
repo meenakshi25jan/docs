@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import get_settings
-from app.core.db_url import prepare_asyncpg_url
+from app.core.db_url import is_neon_database_url, prepare_asyncpg_url
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -33,17 +33,30 @@ def _database_url() -> str:
     return url
 
 
+def _engine_pool_kwargs(settings, database_url: str) -> dict[str, int]:
+    """Neon scale-to-zero + Render cold starts need small pools and recycling."""
+    pool_size = settings.DATABASE_POOL_SIZE
+    max_overflow = settings.DATABASE_MAX_OVERFLOW
+    if is_neon_database_url(database_url):
+        pool_size = min(pool_size, 5)
+        max_overflow = min(max_overflow, 5)
+    return {"pool_size": pool_size, "max_overflow": max_overflow}
+
+
 def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
-        url, connect_args = prepare_asyncpg_url(_database_url())
+        database_url = _database_url()
+        url, connect_args = prepare_asyncpg_url(database_url)
+        pool_kwargs = _engine_pool_kwargs(settings, database_url)
         _engine = create_async_engine(
             url,
             connect_args=connect_args,
-            pool_size=settings.DATABASE_POOL_SIZE,
-            max_overflow=settings.DATABASE_MAX_OVERFLOW,
+            pool_recycle=settings.DATABASE_POOL_RECYCLE,
+            pool_pre_ping=settings.DATABASE_POOL_PRE_PING,
             echo=settings.DEBUG,
+            **pool_kwargs,
         )
     return _engine
 
