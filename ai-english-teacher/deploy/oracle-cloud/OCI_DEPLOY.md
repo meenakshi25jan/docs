@@ -61,7 +61,7 @@ Full wizard: [VM_SETUP.md](VM_SETUP.md)
 ```bash
 ssh -i ~/.ssh/oci_key ubuntu@YOUR_VM_PUBLIC_IP
 
-curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/cursor/fullstack-vm-voice-d164/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
+curl -fsSL https://raw.githubusercontent.com/meenakshi25jan/docs/main/ai-english-teacher/deploy/oracle-cloud/setup-vm.sh | bash
 ```
 
 Edit `.env` when prompted:
@@ -95,7 +95,7 @@ docker compose -f docker-compose.oracle.yml --env-file .env up -d --build
 ## Manual deploy
 
 ```bash
-git clone --branch cursor/fullstack-vm-voice-d164 https://github.com/meenakshi25jan/docs.git
+git clone --branch main https://github.com/meenakshi25jan/docs.git
 cd docs/ai-english-teacher/deploy/oracle-cloud
 cp .env.example .env
 nano .env
