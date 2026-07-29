@@ -4,6 +4,8 @@ This example answers the question from the article: **Is Google's Open Knowledge
 
 **Short answer: No.** OKF organizes knowledge; RAG retrieves it. Together they work better than either alone.
 
+📄 **Read the full article with example output:** [ARTICLE.md](./ARTICLE.md)
+
 ## What this demo shows
 
 | Layer | Traditional RAG | OKF-enhanced RAG |
