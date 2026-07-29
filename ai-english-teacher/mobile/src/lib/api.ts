@@ -123,4 +123,17 @@ export const api = {
       conversation_id?: string;
     }) => request('/voice/analyze', { method: 'POST', body: data }),
   },
+  grammar: {
+    lessons: (grade: number) => request(`/grammar/lessons?grade=${grade}`),
+    intro: (grade: number, lessonId: string) =>
+      request(`/grammar/intro?grade=${grade}&lesson_id=${lessonId}`),
+    practice: (data: {
+      grade: number;
+      lesson_id: string;
+      transcript?: string;
+      audio_base64?: string;
+      audio_mime_type?: string;
+      duration_seconds?: number;
+    }) => request('/grammar/practice', { method: 'POST', body: data }),
+  },
 };

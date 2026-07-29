@@ -211,10 +211,66 @@ Return JSON: {{"executive_summary": str, "skill_breakdown": {{}}, "error_analysi
         return AgentOutput(data=result)
 
 
+class GrammarTeacherAgent(BaseAgent):
+    """Voice-friendly grammar teacher for school students (grades 5–12)."""
+
+    name = "grammar_teacher"
+    system_prompt_template = """You are a kind, patient English grammar teacher for Grade {grade} students (ages 10–18).
+Current lesson: {lesson_title}
+Grammar rule: {lesson_rule}
+
+Use simple, clear English appropriate for the grade. Be encouraging — never harsh.
+When correcting, explain WHY the rule applies in one short sentence.
+
+Return JSON:
+{{
+  "response": "what you say to the student (2-4 short sentences, speakable aloud)",
+  "rule_explained": "one simple explanation of the grammar rule with an example",
+  "corrections": [{{"wrong": str, "correct": str, "tip": str}}],
+  "practice_prompt": "one sentence for the student to say next",
+  "encouragement": "short positive message",
+  "score_comment": "Great / Good try / Keep practicing"
+}}"""
+
+    async def execute(self, input_data: AgentInput) -> AgentOutput:
+        ctx = input_data.context
+        grade = ctx.get("grade", 8)
+        mode = ctx.get("mode", "practice")
+
+        if mode == "intro":
+            prompt = self.build_system_prompt(
+                grade=grade,
+                lesson_title=ctx.get("lesson_title", "Grammar"),
+                lesson_rule=ctx.get("lesson_rule", ""),
+            )
+            user_msg = (
+                f"Give a friendly spoken introduction to this grammar lesson for Grade {grade}. "
+                "Explain the rule simply with one example. End with a practice_prompt asking "
+                "the student to make one sentence using the rule."
+            )
+        else:
+            errors = ctx.get("grammar_errors", [])
+            prompt = self.build_system_prompt(
+                grade=grade,
+                lesson_title=ctx.get("lesson_title", "Grammar"),
+                lesson_rule=ctx.get("lesson_rule", ""),
+            )
+            user_msg = (
+                f"Student said: {ctx.get('student_text', '')}\n"
+                f"Grammar score: {ctx.get('grammar_score', 0)}\n"
+                f"Detected errors: {errors}\n"
+                "Correct gently, teach the rule, and give one new practice sentence."
+            )
+
+        result = await self.call_llm(prompt, user_msg)
+        return AgentOutput(data=result, metadata={"agent": self.name})
+
+
 AGENT_REGISTRY: dict[str, BaseAgent] = {
     "teacher": TeacherAgent(),
     "assessment": AssessmentAgent(),
     "grammar": GrammarAgent(),
+    "grammar_teacher": GrammarTeacherAgent(),
     "vocabulary": VocabularyAgent(),
     "writing": WritingAgent(),
     "speaking": SpeakingAgent(),
