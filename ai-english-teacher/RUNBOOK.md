@@ -2067,6 +2067,7 @@ Runs health, readiness, reliability, migration/RLS API checks, `production_smoke
 | Voice-first PRD v2 | `docs/13-VOICE_FIRST_PRD_V2.md` |
 | Cognitive Orchestration Layer | `docs/14-COGNITIVE_ORCHESTRATION_LAYER.md` |
 | System architecture | `docs/02-SYSTEM_ARCHITECTURE.md` |
+| **Complete architecture (C4 + agents + deploy)** | **`docs/ARCHITECTURE_COMPLETE.md`** |
 | API design | `docs/04-API_DESIGN.md` |
 | Production readiness | `docs/12-PRODUCTION_READINESS.md` |
 | Copilot / Azure OpenAI | `deploy/cheapest/COPILOT_AZURE.md` |
