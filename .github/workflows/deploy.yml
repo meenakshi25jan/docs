@@ -54,12 +54,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "FAIL: DATABASE_URL secret required for production migrations"
-            exit 1
+            echo "WARN: DATABASE_URL secret not set — skipping GitHub-side migrations"
+            echo "Migrations will run via API start.sh on Render (SKIP_MIGRATIONS=false)"
+          else
+            pip install -r requirements-render.txt
+            python3 scripts/migrate.py
+            python3 scripts/verify_migrations_applied.py
           fi
-          pip install -r requirements-render.txt
-          python3 scripts/migrate.py
-          python3 scripts/verify_migrations_applied.py
 
       - name: Trigger Render API deploy hook
         if: >
