@@ -279,6 +279,44 @@ class CognitiveOrchestrator:
 
         knowledge_grounding = teacher_context.get("knowledge_grounding") or {}
 
+        governance_meta = None
+        governance_api = None
+        try:
+            from app.services.governance_service import GovernanceService
+
+            gs = GovernanceService()
+            student_profile = memory_bundle.get("student_profile", {}) or {}
+            weakest_skill = None
+            confidence_score = None
+            if isinstance(student_profile, dict):
+                weakest_skill = student_profile.get("weakest_skill")
+                confidence_score = student_profile.get("confidence_score")
+            trace_id = trace.trace_id
+            governance_meta = await gs.evaluate_turn_safe(
+                learner_id=learner_id,
+                tenant_id=tenant_id,
+                trace_id=trace_id,
+                conversation_id=session_id,
+                response=response_text,
+                intent=intent.value,
+                teacher_brain=brain_output.get("teacher_brain"),
+                agent_output=brain_output,
+                corrections=state.conversation.pending_corrections,
+                teaching_mode=state.voice.teaching_mode,
+                teaching_instruction=teacher_context.get("teaching_instruction"),
+                memory_meta=memory_meta,
+                knowledge_grounding=knowledge_grounding,
+                curriculum_recommendation=None,
+                weakest_skill=weakest_skill,
+                confidence_score=confidence_score,
+                tools_invoked=[t.value for t in tools],
+                persist_audit=False,
+            )
+            if governance_meta:
+                governance_api = gs.to_api_metadata(governance_meta)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("governance.turn_eval_failed", extra={"error": str(exc)})
+
         return {
             "response": response_text,
             "intent": intent.value,
@@ -294,6 +332,7 @@ class CognitiveOrchestrator:
             "teacher_brain": brain_output.get("teacher_brain"),
             "memory": memory_meta,
             "knowledge_grounding": knowledge_grounding,
+            "governance": governance_api,
             "cognitive_trace": trace.to_dict(),
             "memory_domains": memory_bundle.get("domains_queried", []),
         }

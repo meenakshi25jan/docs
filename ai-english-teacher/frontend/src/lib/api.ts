@@ -252,4 +252,14 @@ export const api = {
       return request(`/knowledge/mistake-context?${q.toString()}`);
     },
   },
+  governance: {
+    summary: () => request('/governance/summary'),
+    evaluations: (limit = 20) =>
+      request(`/governance/evaluations?limit=${limit}`),
+    quality: () => request('/governance/quality'),
+    grounding: (limit = 20) =>
+      request(`/governance/grounding?limit=${limit}`),
+    auditLog: (limit = 50) =>
+      request(`/governance/audit-log?limit=${limit}`),
+  },
 };

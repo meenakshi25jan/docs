@@ -162,6 +162,32 @@ async def run_voice_turn(
     except Exception:  # noqa: BLE001
         curriculum_meta = None
 
+    governance_meta = None
+    try:
+        from app.services.governance_service import GovernanceService
+
+        gs = GovernanceService()
+        gov = await gs.evaluate_turn_safe(
+            learner_id=learner_id,
+            tenant_id=tenant_id,
+            trace_id=(output.metadata or {}).get("trace_id"),
+            conversation_id=conversation_id or session_id,
+            response=response_text,
+            intent=(output.metadata or {}).get("intent"),
+            teacher_brain=teacher_brain_meta,
+            agent_output=output.data,
+            corrections=decision.get("corrections_now", []),
+            teaching_mode=decision.get("teaching_mode"),
+            memory_meta=memory_meta,
+            knowledge_grounding=knowledge_meta,
+            curriculum_recommendation=curriculum_meta,
+            tools_invoked=(output.metadata or {}).get("tools_invoked"),
+        )
+        if gov:
+            governance_meta = gs.to_api_metadata(gov)
+    except Exception:  # noqa: BLE001
+        pass
+
     return {
         "transcript": final_transcript,
         "response": response_text,
@@ -187,6 +213,7 @@ async def run_voice_turn(
         "memory": memory_meta,
         "curriculum_recommendation": curriculum_meta,
         "knowledge_grounding": knowledge_meta,
+        "governance": governance_meta,
         "agent_output": output.data,
         "metadata": {
             **(output.metadata or {}),

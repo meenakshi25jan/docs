@@ -1354,6 +1354,143 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$C
 
 ---
 
+## 22. AI Governance v1
+
+AI Governance is a deterministic evaluation and audit layer that scores Teacher responses, curriculum recommendations, knowledge grounding, and memory usage after each turn — without changing planning or blocking voice responses.
+
+### Architecture
+
+```
+Voice turn / cognitive orchestrator completes response
+  → GovernanceService.evaluate_turn_safe() / evaluate_turn()
+  → TeacherResponseEvaluation, CurriculumEvaluation, GroundingEvaluation, MemoryEvaluation
+  → GovernanceMetadata (scores + warnings)
+  → optional in-memory store + learning_event audit
+  → voice-turn response metadata.governance
+```
+
+| Module | Path | Role |
+|--------|------|------|
+| Schemas | `backend/app/schemas/governance.py` | Evaluation + API response models |
+| Service | `backend/app/services/governance_service.py` | Deterministic scoring, warnings, audit |
+| API | `backend/app/api/v1/governance.py` | Read-only summary, quality, grounding, audit |
+
+Governance runs **after** response generation. Teacher Brain planning modules are not modified.
+
+### Evaluation model
+
+| Dimension | Signals (0–1) |
+|-----------|----------------|
+| Teacher response | correction quality, explanation quality, encouragement, practice prompt, length compliance |
+| Curriculum | weakest-skill match, lesson relevance, revision relevance, path consistency |
+| Grounding | grounding present, source count, fallback usage, lesson match, knowledge quality |
+| Memory | recurring mistakes used, lesson reflections used, memory summary available |
+| Student outcome | progress trend, confidence trend, lesson completion activity, assessment improvement |
+
+Overall score is a weighted blend of turn scores; student outcome is blended into summary averages when SI data is available.
+
+### Governance metadata (voice-turn, optional)
+
+```json
+{
+  "governance": {
+    "teacher_response_score": 0.91,
+    "grounding_score": 0.88,
+    "curriculum_score": 0.94,
+    "memory_score": 0.82,
+    "overall_score": 0.89,
+    "warnings": [],
+    "status": "good"
+  }
+}
+```
+
+Additive and backward compatible — clients that ignore `governance` continue to work.
+
+### Safety warnings (non-blocking)
+
+| Warning | Trigger |
+|---------|---------|
+| `ungrounded_teaching` | Teaching intent but no knowledge grounding when expected |
+| `excessive_response_length` | Response exceeds voice-safe length threshold |
+| `missing_practice_prompt` | Teaching turn without practice prompt |
+| `curriculum_mismatch` | Recommendation skill ≠ weakest skill |
+| `weak_recommendation_confidence` | Low curriculum confidence |
+| `missing_memory_context` | Memory expected but not used |
+| `grounding_fallback_used` | Knowledge retrieval used fallback path |
+
+Warnings are logged and returned in metadata; they never fail the HTTP request.
+
+### Audit events
+
+Stored in-process per learner (deque, capped) and optionally written as `governance_*` learning events via Memory Intelligence when DB is available.
+
+Event kinds: `teacher_response_generated`, `curriculum_recommendation_generated`, `knowledge_grounding_generated`, `lesson_completed`, `assessment_completed`, `governance_warning`.
+
+No new migration — reuses reports / learner_memories / metadata where possible.
+
+### APIs (JWT required, read-only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/governance/summary` | Aggregated scores + recent warnings |
+| GET | `/governance/evaluations` | Recent turn evaluations (`limit`) |
+| GET | `/governance/quality` | Average scores across stored evaluations |
+| GET | `/governance/grounding` | Grounding evaluation history |
+| GET | `/governance/audit-log` | Governance audit events |
+
+### Integration points
+
+- `cognitive/orchestrator.py` — post-turn `evaluate_turn_safe`
+- `orchestration/runner.py` — passes `governance` in metadata
+- `orchestration/voice/voice_turn.py` — final eval with curriculum/memory/grounding context
+- `api/v1/conversations.py` — `governance` on voice-turn response
+
+### Mock mode
+
+When AI keys are unset, governance still runs on deterministic heuristics over response text and metadata. No OpenAI calls in governance layer.
+
+### Smoke tests
+
+```bash
+# Voice lesson — verify governance block in response
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$CONV_ID/voice-turn \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transcript":"I went to the market yesterday.","scenario":"everyday"}'
+# Expect: governance.teacher_response_score, grounding_score, curriculum_score, memory_score
+
+# Governance summary
+curl "https://ai-english-teacher-api.onrender.com/api/v1/governance/summary" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Quality averages
+curl "https://ai-english-teacher-api.onrender.com/api/v1/governance/quality" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Grounding history
+curl "https://ai-english-teacher-api.onrender.com/api/v1/governance/grounding" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Verify after a voice lesson:
+
+1. Teacher response generated
+2. `governance` metadata present on voice-turn
+3. Curriculum recommendation metadata present (if curriculum path active)
+4. `knowledge_grounding` metadata present (if grounding active)
+5. Memory metadata present (if memory bundle used)
+6. Scores: `teacher_response_score`, `grounding_score`, `curriculum_score`, `memory_score`
+
+### Known limitations
+
+- In-process evaluation store (not persisted across process restarts on Render)
+- No admin mutation APIs (read-only v1)
+- Text-message path may omit full governance metadata (voice-first scope)
+- Student outcome scoring depends on SI summary availability
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1372,4 +1509,4 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$C
 
 ---
 
-*Last updated: Knowledge Intelligence v1 · branch `cursor/knowledge-intelligence-v1-f37f` · stack: Render + Neon + Next.js proxy*
+*Last updated: AI Governance v1 · branch `cursor/knowledge-intelligence-v1-d164` · stack: Render + Neon + Next.js proxy*
