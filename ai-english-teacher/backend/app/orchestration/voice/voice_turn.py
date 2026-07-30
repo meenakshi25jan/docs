@@ -128,6 +128,39 @@ async def run_voice_turn(
                 "memory_summary_available": False,
             }
 
+    curriculum_meta = None
+    try:
+        from uuid import UUID
+
+        from sqlalchemy import select
+
+        from app.core.database import get_session_factory, set_tenant_context
+        from app.models import LearnerProfile
+        from app.services.curriculum_intelligence_service import CurriculumIntelligenceService
+        from app.services.memory_intelligence_service import MemoryIntelligenceService
+
+        factory = get_session_factory()
+        async with factory() as session:
+            if tenant_id:
+                await set_tenant_context(session, str(tenant_id))
+            profile = await session.scalar(
+                select(LearnerProfile).where(LearnerProfile.id == UUID(str(learner_id)))
+            )
+            if profile:
+                mem = await MemoryIntelligenceService().build_bundle(
+                    learner_id=str(profile.id),
+                    tenant_id=tenant_id,
+                    db=session,
+                )
+                rec = await CurriculumIntelligenceService().build_recommendations(
+                    session,
+                    user_id=profile.user_id,
+                    memory_bundle=mem,
+                )
+                curriculum_meta = CurriculumIntelligenceService().get_primary_recommendation_metadata(rec)
+    except Exception:  # noqa: BLE001
+        curriculum_meta = None
+
     return {
         "transcript": final_transcript,
         "response": response_text,
@@ -151,6 +184,7 @@ async def run_voice_turn(
         "analysis_id": voice_result.get("analysis_id"),
         "teacher_brain": teacher_brain_meta,
         "memory": memory_meta,
+        "curriculum_recommendation": curriculum_meta,
         "agent_output": output.data,
         "metadata": {
             **(output.metadata or {}),

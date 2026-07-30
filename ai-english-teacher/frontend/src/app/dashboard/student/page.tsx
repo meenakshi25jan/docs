@@ -79,6 +79,13 @@ function SkillCard({ label, score, color, trend }: { label: string; score: numbe
 
 export default function StudentDashboard() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [recommendation, setRecommendation] = useState<{
+    lesson_id: string;
+    title: string;
+    reason: string;
+    route: string;
+    skill_focus: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,9 +93,18 @@ export default function StudentDashboard() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    api.studentIntelligence.summary()
-      .then((data) => {
-        if (!cancelled) setSummary(data as SummaryData);
+    Promise.all([
+      api.studentIntelligence.summary(),
+      api.curriculum.recommended().catch(() => null),
+    ])
+      .then(([summaryData, recData]) => {
+        if (!cancelled) {
+          setSummary(summaryData as SummaryData);
+          if (recData && typeof recData === 'object' && 'primary' in recData) {
+            const primary = (recData as { primary: typeof recommendation }).primary;
+            if (primary) setRecommendation(primary);
+          }
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard');
@@ -188,6 +204,21 @@ export default function StudentDashboard() {
                 <a href={focusLink} className="text-xs underline opacity-90 mt-2 block">Start practice →</a>
               </div>
             </div>
+
+            {recommendation && (
+              <div className="bg-white rounded-xl border p-6 mb-8 shadow-sm">
+                <h3 className="font-semibold text-lg mb-1">Recommended Next Lesson</h3>
+                <p className="text-gray-800 font-medium">{recommendation.title}</p>
+                <p className="text-sm text-gray-600 mt-2">{recommendation.reason}</p>
+                <p className="text-xs text-gray-500 mt-1 capitalize">Skill focus: {recommendation.skill_focus}</p>
+                <a
+                  href={recommendation.route.startsWith('/') ? recommendation.route : `/${recommendation.route}`}
+                  className="inline-block mt-4 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                  Start lesson →
+                </a>
+              </div>
+            )}
 
             {profile?.confidence_score != null && (
               <div className="bg-white rounded-xl border p-4 mb-8 text-sm text-gray-600">
