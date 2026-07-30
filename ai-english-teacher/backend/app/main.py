@@ -25,6 +25,7 @@ from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.governance import router as governance_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.operations import router as operations_router
+from app.api.v1.security import router as security_router
 
 settings = get_settings()
 
@@ -69,6 +70,7 @@ app.include_router(knowledge_router, prefix=API_PREFIX)
 app.include_router(governance_router, prefix=API_PREFIX)
 app.include_router(analytics_router, prefix=API_PREFIX)
 app.include_router(operations_router, prefix=API_PREFIX)
+app.include_router(security_router, prefix=API_PREFIX)
 
 try:
     from prometheus_client import make_asgi_app

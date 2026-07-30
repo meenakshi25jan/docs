@@ -79,6 +79,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}, retrie
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Request failed' }));
     const detail = error.detail;
+    if (res.status === 403) {
+      throw new Error(
+        typeof detail === 'string' ? detail : 'You do not have permission for this action.'
+      );
+    }
     const message = typeof detail === 'string'
       ? detail
       : Array.isArray(detail)

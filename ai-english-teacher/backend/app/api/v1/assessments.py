@@ -20,6 +20,10 @@ from app.schemas import (
 )
 from app.scoring.engine import aggregate_scores, score_to_cefr, score_to_ielts, score_to_pte
 from app.services.progress_snapshot_service import record_from_assessment
+from app.services.security_service import (
+    learner_profile_for_resource,
+    verify_assessment_access,
+)
 
 router = APIRouter(prefix="/assessments", tags=["Assessments"])
 
@@ -68,8 +72,7 @@ async def start_assessment(
     db: AsyncSession = Depends(get_db),
 ):
     assessment = await db.get(Assessment, assessment_id)
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    assessment = await verify_assessment_access(db, user, assessment)
     assessment.status = "in_progress"
     assessment.started_at = datetime.now(timezone.utc)
     return AssessmentResponse.model_validate(assessment)
@@ -83,17 +86,16 @@ async def submit_assessment(
     db: AsyncSession = Depends(get_db),
 ):
     assessment = await db.get(Assessment, assessment_id)
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    assessment = await verify_assessment_access(db, user, assessment)
+    owner = await learner_profile_for_resource(db, user, assessment.learner_id)
 
-    learner = await _get_learner(user, db)
     results: dict[str, SkillResult] = {}
     skill_score_map: dict[str, float] = {}
 
     for answer in req.answers:
         agent = AGENT_REGISTRY.get(answer.skill, AGENT_REGISTRY["assessment"])
         output = await agent.execute(AgentInput(
-            learner_id=str(learner.id),
+            learner_id=str(owner.id),
             tenant_id=str(user.tenant_id),
             context={"skill": answer.skill, "responses": [answer.response], "text": answer.response},
         ))
@@ -125,14 +127,14 @@ async def submit_assessment(
     assessment.status = "completed"
     assessment.completed_at = datetime.now(timezone.utc)
 
-    learner.current_cefr = overall.cefr
-    learner.ielts_estimate = overall.ielts
-    learner.pte_estimate = overall.pte
+    owner.current_cefr = overall.cefr
+    owner.ielts_estimate = overall.ielts
+    owner.pte_estimate = overall.pte
 
     await record_from_assessment(
         db,
         tenant_id=user.tenant_id,
-        learner_id=learner.id,
+        learner_id=owner.id,
         skill_scores=skill_score_map,
         estimate=overall,
     )
@@ -160,8 +162,7 @@ async def get_results(
     assessment = await db.scalar(
         select(Assessment).options(selectinload(Assessment.results)).where(Assessment.id == assessment_id)
     )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    assessment = await verify_assessment_access(db, user, assessment)
 
     results = {}
     skill_map = {}

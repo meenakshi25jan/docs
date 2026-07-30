@@ -36,8 +36,10 @@ class TestConversations:
         conv.scenario = "job_interview"
         conv.context = {"persona_id": "conversation_partner"}
         conv.messages = []
+        conv.tenant_id = client.mock_user.tenant_id
+        conv.learner_id = client.mock_learner.id
 
-        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner])
+        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner, client.mock_learner])
 
         mock_voice_result = {
             "transcript": "I have five years experience",
@@ -79,8 +81,10 @@ class TestConversations:
         conv.id = conv_id
         conv.scenario = "restaurant"
         conv.context = {"persona_id": "conversation_partner"}
+        conv.tenant_id = client.mock_user.tenant_id
+        conv.learner_id = client.mock_learner.id
 
-        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner])
+        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner, client.mock_learner])
 
         mock_report = {
             "lesson_summary": {"turn_count": 3},
@@ -103,8 +107,10 @@ class TestConversations:
         conv.id = conv_id
         conv.scenario = "general"
         conv.context = {}
+        conv.tenant_id = client.mock_user.tenant_id
+        conv.learner_id = client.mock_learner.id
 
-        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner])
+        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner, client.mock_learner])
 
         with patch(
             "app.api.v1.conversations.generate_lesson_report",

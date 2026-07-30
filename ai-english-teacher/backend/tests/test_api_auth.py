@@ -107,6 +107,7 @@ class TestAuthLogin:
             email="login@example.com",
             password_hash=hash_password("correctpass"),
             role="student",
+            is_active=True,
         )
         auth_client.mock_session.scalar = AsyncMock(return_value=user)
 
@@ -118,6 +119,28 @@ class TestAuthLogin:
         data = res.json()
         assert data["user"]["email"] == "login@example.com"
         assert "access_token" in data["tokens"]
+
+    @pytest.mark.asyncio
+    async def test_login_rejects_inactive_user(self, auth_client: AsyncClient):
+        from app.core.security import hash_password
+
+        tenant_id = uuid4()
+        user = User(
+            id=uuid4(),
+            tenant_id=tenant_id,
+            email="inactive@example.com",
+            password_hash=hash_password("correctpass"),
+            role="student",
+            is_active=False,
+        )
+        auth_client.mock_session.scalar = AsyncMock(return_value=user)
+
+        res = await auth_client.post(
+            "/api/v1/auth/login",
+            json={"email": "inactive@example.com", "password": "correctpass"},
+        )
+        assert res.status_code == 401
+        assert "inactive" in res.json()["detail"].lower()
 
 
 class TestAuthRefresh:
