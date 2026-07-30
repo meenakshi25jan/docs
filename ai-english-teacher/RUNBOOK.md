@@ -2036,6 +2036,17 @@ python3 scripts/production_smoke_test.py
 5. `python3 scripts/load_smoke.py` → `failures: 0`
 6. Confirm no regressions on existing APIs (`/health`, `/production/readiness`, `/security/summary`)
 
+### Automated staging validation
+
+After setting `API_BASE_URL`, `ADMIN_TOKEN`, and optionally `DATABASE_URL`, `STUDENT_TOKEN`, `TEACHER_TOKEN`:
+
+```bash
+cd ai-english-teacher/backend
+python3 scripts/staging_validation.py
+```
+
+Runs health, readiness, reliability, migration/RLS API checks, `production_smoke_test.py`, `backup_verify.sh`, and `load_smoke.py`; prints JSON + recommendation (`GO TO PILOT` / `CONDITIONAL GO` / `NO-GO`).
+
 ### Known limitations (v1)
 
 - No OpenTelemetry / distributed tracing
