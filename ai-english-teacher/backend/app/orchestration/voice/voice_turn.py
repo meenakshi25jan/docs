@@ -108,6 +108,7 @@ async def run_voice_turn(
     latency_ms = int((time.perf_counter() - started) * 1000)
     teacher_brain_meta = output.data.get("teacher_brain") or (output.metadata or {}).get("teacher_brain")
     memory_meta = (output.metadata or {}).get("memory")
+    knowledge_meta = (output.metadata or {}).get("knowledge_grounding")
 
     if not memory_meta:
         try:
@@ -185,6 +186,7 @@ async def run_voice_turn(
         "teacher_brain": teacher_brain_meta,
         "memory": memory_meta,
         "curriculum_recommendation": curriculum_meta,
+        "knowledge_grounding": knowledge_meta,
         "agent_output": output.data,
         "metadata": {
             **(output.metadata or {}),

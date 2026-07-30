@@ -676,8 +676,9 @@ Infra fixes on `cursor/cheapest-cloud-deploy-d164`. Voice-first features on `cur
 | GET | `/curriculum/learning-path` | Yes | Daily / weekly / exam / repair / confidence path |
 | POST | `/curriculum/lesson-complete` | Yes | Record lesson completion + schedule revision |
 | GET | `/curriculum/revision-schedule` | Yes | Learner revision schedule |
-
-\* `/voice/personas` and `/curriculum/topics` are public; other curriculum endpoints require auth.
+| GET | `/knowledge/search` | Yes | Knowledge search + grounding |
+| GET | `/knowledge/lesson-context` | Yes | Lesson teaching knowledge |
+| GET | `/knowledge/mistake-context` | Yes | Mistake remediation knowledge |
 
 Full interactive docs: https://ai-english-teacher-api.onrender.com/docs
 
@@ -1224,6 +1225,135 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$C
 
 ---
 
+## 21. Knowledge Intelligence v1
+
+Knowledge Intelligence is the unified retrieval and grounding layer that decides **what teaching knowledge** to use when explaining, demonstrating, correcting, and practicing lessons. Curriculum Intelligence decides what to study; Knowledge Intelligence supplies the content.
+
+### Architecture
+
+```
+Curriculum lesson + SI profile + Memory mistakes + user message
+  → KnowledgeIntelligenceService.build_grounding_context()
+  → lesson/mistake maps + pgvector/keyword + grammar rules
+  → GroundingContext (≤800 chars, voice-safe)
+  → teaching_instruction injection → Teacher Brain → TeacherAgent
+```
+
+| Module | Path | Role |
+|--------|------|------|
+| Registry | `backend/app/services/knowledge_registry.py` | In-code lesson/mistake/concept maps |
+| Service | `backend/app/services/knowledge_intelligence_service.py` | Retrieval, ranking, validation, grounding |
+| Store | `backend/app/services/knowledge_store.py` | pgvector + keyword fallback (preserved) |
+| API | `backend/app/api/v1/knowledge.py` | Search, lesson-context, mistake-context |
+
+### Registry (in-code v1)
+
+- **Concepts:** articles, past_tense, present_perfect, prepositions, conditionals, modal_verbs, restaurant_roleplay, job_interview, ielts_speaking, pte_speaking, etc.
+- **lesson_knowledge_map:** curriculum lesson IDs → concepts + query terms
+- **mistake_knowledge_map:** error categories → explanations, examples, corrections, lesson IDs
+
+No migration 007 required for v1.
+
+### Retrieval pipeline
+
+1. Lesson mapping → grammar rule from `grammar_curriculum.py`
+2. Mistake mapping → remediation text
+3. Skill / CEFR / exam query expansion
+4. `knowledge_store.retrieve_knowledge()` (pgvector)
+5. Keyword fallback (`curriculum_data.py`)
+6. Validation + truncation → `GroundingContext`
+
+### Ranking factors
+
+lesson match, concept match, skill match, mistake match, CEFR match, retrieval score, source quality (grammar_curriculum > knowledge_chunks > registry > keyword), brevity.
+
+### Validation
+
+- Max grounding ~800 characters
+- Max 2 examples, 1 practice prompt
+- Relevance threshold for vector scores
+- Safe empty fallback — voice-turn never breaks
+
+### APIs
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/knowledge/search` | Yes | `q` + optional skill/lesson/CEFR/exam |
+| GET | `/knowledge/lesson-context` | Yes | `lesson_id` required |
+| GET | `/knowledge/mistake-context` | Yes | `error_category` required |
+
+### Teacher Brain integration (additive)
+
+Grounding injected into `teaching_instruction`:
+
+```
+Teaching knowledge:
+Use past simple for completed past actions. Example: I went to the market yesterday.
+```
+
+Planning logic (`intent_analyzer`, `error_detector`, `strategy_selector`, `response_planner`) is unchanged.
+
+### Voice-turn metadata (optional)
+
+```json
+{
+  "knowledge_grounding": {
+    "lesson_id": "grammar-6-past-simple",
+    "skill_focus": "grammar",
+    "chunk_count": 2,
+    "sources": ["grammar_curriculum"],
+    "fallback_used": false
+  }
+}
+```
+
+### Seed script
+
+```bash
+cd ai-english-teacher/backend
+DATABASE_URL="postgresql://..." python3 scripts/seed_knowledge_chunks.py
+# Optional embeddings when AI configured:
+DATABASE_URL="..." python3 scripts/seed_knowledge_embeddings.py
+```
+
+Safe re-run — inserts only new topic+source pairs.
+
+### Mock mode
+
+When `OPENAI_API_KEY` is unset, embeddings are skipped; keyword + grammar rules still produce grounding.
+
+### Smoke tests
+
+```bash
+# Search
+curl "https://ai-english-teacher-api.onrender.com/api/v1/knowledge/search?q=past+tense" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Lesson context
+curl "https://ai-english-teacher-api.onrender.com/api/v1/knowledge/lesson-context?lesson_id=grammar-9-modal-verbs" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Mistake context
+curl "https://ai-english-teacher-api.onrender.com/api/v1/knowledge/mistake-context?error_category=past_tense" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Voice turn — verify knowledge_grounding in response
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$CONV_ID/voice-turn \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transcript":"I am go to market yesterday.","scenario":"everyday"}'
+```
+
+### Known limitations
+
+- No concept graph DB (in-code maps only)
+- No admin ingest API (script-based seeding)
+- No retrieval log table
+- `vocabulary_entries` not integrated
+- TeacherAgent reads grounding via `teaching_instruction` (not separate prompt field)
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1242,4 +1372,4 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$C
 
 ---
 
-*Last updated: Curriculum Intelligence v1 · branch `cursor/curriculum-intelligence-v1-f37f` · stack: Render + Neon + Next.js proxy*
+*Last updated: Knowledge Intelligence v1 · branch `cursor/knowledge-intelligence-v1-f37f` · stack: Render + Neon + Next.js proxy*

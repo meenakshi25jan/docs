@@ -75,6 +75,7 @@ async def run_conversation_turn(
             "teaching_mode": result.get("teaching_mode"),
             "teacher_brain": result.get("teacher_brain"),
             "memory": result.get("memory"),
+            "knowledge_grounding": result.get("knowledge_grounding"),
             "cognitive_trace": result.get("cognitive_trace"),
             "orchestration": "cognitive",
         }
@@ -111,5 +112,6 @@ async def run_conversation_turn(
             "reflections_available": bool(memory_bundle.get("lesson_reflections")),
             "memory_summary_available": bool(memory_bundle.get("memory_summary")),
         },
+        "knowledge_grounding": final.get("knowledge_grounding", {}),
     })
     return AgentOutput(data=data, metadata=metadata)

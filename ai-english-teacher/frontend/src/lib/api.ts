@@ -217,4 +217,39 @@ export const api = {
     }) => request('/curriculum/lesson-complete', { method: 'POST', body: data }),
     revisionSchedule: () => request('/curriculum/revision-schedule'),
   },
+  knowledge: {
+    search: (params: {
+      q: string;
+      skill_focus?: string;
+      lesson_id?: string;
+      cefr_level?: string;
+      target_exam?: string;
+    }) => {
+      const q = new URLSearchParams();
+      q.set('q', params.q);
+      if (params.skill_focus) q.set('skill_focus', params.skill_focus);
+      if (params.lesson_id) q.set('lesson_id', params.lesson_id);
+      if (params.cefr_level) q.set('cefr_level', params.cefr_level);
+      if (params.target_exam) q.set('target_exam', params.target_exam);
+      return request(`/knowledge/search?${q.toString()}`);
+    },
+    lessonContext: (lessonId: string, params?: { cefr_level?: string; target_exam?: string }) => {
+      const q = new URLSearchParams({ lesson_id: lessonId });
+      if (params?.cefr_level) q.set('cefr_level', params.cefr_level);
+      if (params?.target_exam) q.set('target_exam', params.target_exam);
+      return request(`/knowledge/lesson-context?${q.toString()}`);
+    },
+    mistakeContext: (params: {
+      error_category: string;
+      error_type?: string;
+      error_text?: string;
+      cefr_level?: string;
+    }) => {
+      const q = new URLSearchParams({ error_category: params.error_category });
+      if (params.error_type) q.set('error_type', params.error_type);
+      if (params.error_text) q.set('error_text', params.error_text);
+      if (params.cefr_level) q.set('cefr_level', params.cefr_level);
+      return request(`/knowledge/mistake-context?${q.toString()}`);
+    },
+  },
 };
