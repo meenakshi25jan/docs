@@ -173,6 +173,7 @@ async def voice_turn_in_conversation(
         "memory": result.get("memory"),
         "curriculum_recommendation": result.get("curriculum_recommendation"),
         "knowledge_grounding": result.get("knowledge_grounding"),
+        "governance": result.get("governance"),
     }
     assistant_msg = ConversationMessage(
         conversation_id=conv.id,
@@ -194,6 +195,7 @@ async def voice_turn_in_conversation(
         "memory": result.get("memory"),
         "curriculum_recommendation": result.get("curriculum_recommendation"),
         "knowledge_grounding": result.get("knowledge_grounding"),
+        "governance": result.get("governance"),
         "user_message": MessageResponse(role="user", content=transcript),
         "assistant_message": MessageResponse(
             role="assistant",

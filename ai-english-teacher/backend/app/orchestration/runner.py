@@ -76,6 +76,7 @@ async def run_conversation_turn(
             "teacher_brain": result.get("teacher_brain"),
             "memory": result.get("memory"),
             "knowledge_grounding": result.get("knowledge_grounding"),
+            "governance": result.get("governance"),
             "cognitive_trace": result.get("cognitive_trace"),
             "orchestration": "cognitive",
         }
@@ -114,4 +115,27 @@ async def run_conversation_turn(
         },
         "knowledge_grounding": final.get("knowledge_grounding", {}),
     })
+    try:
+        from app.services.governance_service import GovernanceService
+
+        enriched = final.get("enriched_context", {}) or {}
+        gov = await GovernanceService().evaluate_turn_safe(
+            learner_id=learner_id,
+            tenant_id=tenant_id,
+            trace_id=final.get("trace_id"),
+            conversation_id=session_id,
+            response=data.get("response") or extract_teacher_response(data) or "",
+            intent=final.get("intent"),
+            teacher_brain=enriched.get("teacher_brain") or data.get("teacher_brain"),
+            agent_output=data,
+            teaching_mode=final.get("teaching_mode"),
+            teaching_instruction=enriched.get("teaching_instruction"),
+            memory_meta=metadata.get("memory"),
+            knowledge_grounding=metadata.get("knowledge_grounding"),
+            tools_invoked=None,
+        )
+        if gov:
+            metadata["governance"] = GovernanceService().to_api_metadata(gov)
+    except Exception:  # noqa: BLE001
+        pass
     return AgentOutput(data=data, metadata=metadata)
