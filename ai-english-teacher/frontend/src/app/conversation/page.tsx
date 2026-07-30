@@ -26,7 +26,13 @@ interface Message {
 
 interface LessonReport {
   scores: Record<string, number>;
-  estimates: Record<string, unknown>;
+  estimates: {
+    cefr_level?: string;
+    ielts_speaking_estimate?: number | string;
+    pte_speaking_estimate?: number | string;
+    confidence?: number;
+    label?: string;
+  };
   recurring_mistakes: Array<{ error: string; correction: string; category: string }>;
   executive_summary?: string;
   recommendations?: string[];
@@ -49,9 +55,10 @@ export default function ConversationPage() {
   const { listen, speak, listening, sttSupported, ttsSupported } = useVoice();
 
   useEffect(() => {
-    api.voice.personas().then((res: { personas: Persona[]; scenarios: Scenario[] }) => {
-      setPersonas(res.personas);
-      setScenarios(res.scenarios);
+    api.voice.personas().then((res) => {
+      const data = res as { personas: Persona[]; scenarios: Scenario[] };
+      setPersonas(data.personas);
+      setScenarios(data.scenarios);
     }).catch(() => {
       setScenarios([
         { id: 'job_interview', label: 'Job Interview' },

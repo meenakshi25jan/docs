@@ -131,6 +131,27 @@ export const api = {
     teacher: () => request('/dashboard/teacher'),
     admin: () => request('/dashboard/admin'),
   },
+  studentIntelligence: {
+    profile: () => request('/student-intelligence/profile'),
+    updateProfile: (data: {
+      learning_goal?: string;
+      target_cefr_level?: string;
+      target_exam?: string;
+      preferred_learning_style?: string;
+      daily_goal_minutes?: number;
+    }) => request('/student-intelligence/profile', { method: 'PATCH', body: data }),
+    skills: () => request('/student-intelligence/skills'),
+    mistakes: () => request('/student-intelligence/mistakes'),
+    preferences: () => request('/student-intelligence/preferences'),
+    updatePreferences: (data: {
+      learning_goal?: string;
+      target_cefr_level?: string;
+      target_exam?: string;
+      preferred_learning_style?: string;
+      daily_goal_minutes?: number;
+    }) => request('/student-intelligence/preferences', { method: 'PATCH', body: data }),
+    summary: () => request('/student-intelligence/summary'),
+  },
   reports: {
     generate: (data: { report_type: string; period_days?: number }) =>
       request('/reports/generate', { method: 'POST', body: data }),

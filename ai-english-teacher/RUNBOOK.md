@@ -888,6 +888,53 @@ Upload the `.aab` to [Google Play Console](https://play.google.com/console) ($25
 
 ---
 
+## 17. Student Intelligence v1
+
+Student Intelligence provides a learner-state foundation for personalized teaching (Phase 1).
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/student-intelligence/profile` | Learner profile + CEFR/IELTS/PTE estimates |
+| PATCH | `/api/v1/student-intelligence/profile` | Update learning goal, target exam, preferences |
+| GET | `/api/v1/student-intelligence/skills` | Eight core skills with score, level, trend |
+| GET | `/api/v1/student-intelligence/mistakes` | Recurring mistakes from `error_tracking` |
+| GET | `/api/v1/student-intelligence/preferences` | Learning preferences |
+| PATCH | `/api/v1/student-intelligence/preferences` | Update preferences |
+| GET | `/api/v1/student-intelligence/summary` | Dashboard summary + recommended next focus |
+
+All endpoints require JWT authentication.
+
+### Data sources
+
+| Data | Source tables |
+|------|----------------|
+| Profile / CEFR / exam targets | `learner_profiles`, `users` |
+| Skill scores | `progress_snapshots`, `voice_analyses`, `assessment_results` |
+| Mistakes | `error_tracking` |
+| Preferences | `learner_profiles.preferences` (JSONB) |
+| Progress history | `progress_snapshots` |
+
+No new database tables — reuses existing schema.
+
+### Dashboard integration
+
+The student dashboard (`/dashboard/student`) loads `GET /student-intelligence/summary` via the shared `api.ts` client.
+
+### Smoke tests
+
+```bash
+# After login, use access token:
+curl -H "Authorization: Bearer $TOKEN" https://ai-english-teacher-api.onrender.com/api/v1/student-intelligence/summary
+curl -H "Authorization: Bearer $TOKEN" https://ai-english-teacher-api.onrender.com/api/v1/student-intelligence/skills
+curl -H "Authorization: Bearer $TOKEN" https://ai-english-teacher-api.onrender.com/api/v1/student-intelligence/mistakes
+```
+
+Expected for new learners: `recommended_next_focus: "placement assessment"`, `has_data: false`.
+
+---
+
 ## Related docs
 
 | Doc | Path |

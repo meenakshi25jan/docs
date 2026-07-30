@@ -18,6 +18,7 @@ from app.api.v1.extended import (
 )
 from app.api.v1.voice import router as voice_router
 from app.api.v1.grammar_lessons import router as grammar_router
+from app.api.v1.student_intelligence import router as student_intelligence_router
 
 settings = get_settings()
 
@@ -55,6 +56,7 @@ app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(reports_router, prefix=API_PREFIX)
 app.include_router(voice_router, prefix=API_PREFIX)
 app.include_router(grammar_router, prefix=API_PREFIX)
+app.include_router(student_intelligence_router, prefix=API_PREFIX)
 
 try:
     from prometheus_client import make_asgi_app

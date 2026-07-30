@@ -3,53 +3,122 @@
 import { useEffect, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar,
 } from 'recharts';
+import { api } from '@/lib/api';
 
-interface DashboardData {
-  learner: { current_cefr: string; ielts_estimate: number; pte_estimate: number };
-  skill_scores: Record<string, number>;
+interface SkillDetail {
+  score: number;
+  level?: string | null;
+  trend?: string | null;
 }
 
-const MOCK_TREND = [
-  { month: 'Jan', grammar: 60, vocabulary: 55, speaking: 50, writing: 58, ielts: 5.5 },
-  { month: 'Feb', grammar: 65, vocabulary: 60, speaking: 55, writing: 62, ielts: 6.0 },
-  { month: 'Mar', grammar: 70, vocabulary: 65, speaking: 60, writing: 68, ielts: 6.0 },
-  { month: 'Apr', grammar: 75, vocabulary: 70, speaking: 65, writing: 72, ielts: 6.5 },
-  { month: 'May', grammar: 78, vocabulary: 72, speaking: 68, writing: 75, ielts: 6.5 },
-  { month: 'Jun', grammar: 80, vocabulary: 75, speaking: 70, writing: 78, ielts: 7.0 },
-];
+interface SummaryData {
+  profile: {
+    current_level?: string | null;
+    cefr_level?: string | null;
+    ielts_estimate?: number | null;
+    pte_estimate?: number | null;
+    confidence_score?: number | null;
+    learning_goal?: string | null;
+    name?: string | null;
+  };
+  skills: Record<string, SkillDetail>;
+  top_mistakes: Array<{
+    mistake_type: string;
+    original_text: string;
+    corrected_text?: string | null;
+    severity: string;
+    occurrence_count: number;
+  }>;
+  latest_progress?: {
+    snapshot_at?: string | null;
+    cefr_estimate?: string | null;
+    confidence_score?: number | null;
+  } | null;
+  strongest_skill?: string | null;
+  weakest_skill?: string | null;
+  recommended_next_focus: string;
+  has_data: boolean;
+}
 
-function SkillCard({ label, score, color }: { label: string; score: number; color: string }) {
+const SKILL_LABELS: Record<string, string> = {
+  grammar: 'Grammar',
+  vocabulary: 'Vocabulary',
+  writing: 'Writing',
+  reading: 'Reading',
+  listening: 'Listening',
+  speaking: 'Speaking',
+  pronunciation: 'Pronunciation',
+  fluency: 'Fluency',
+};
+
+const SKILL_COLORS: Record<string, string> = {
+  grammar: '#3b82f6',
+  vocabulary: '#8b5cf6',
+  writing: '#06b6d4',
+  reading: '#10b981',
+  listening: '#f59e0b',
+  speaking: '#ef4444',
+  pronunciation: '#ec4899',
+  fluency: '#f97316',
+};
+
+function SkillCard({ label, score, color, trend }: { label: string; score: number; color: string; trend?: string | null }) {
+  const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : trend === 'stable' ? '→' : '';
   return (
     <div className="bg-white rounded-xl p-5 border shadow-sm">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className="text-3xl font-bold" style={{ color }}>{score}</p>
+      <p className="text-sm text-gray-500 mb-1">{label} {trendIcon && <span className="text-xs">{trendIcon}</span>}</p>
+      <p className="text-3xl font-bold" style={{ color }}>{Math.round(score)}</p>
       <div className="mt-2 h-2 bg-gray-100 rounded-full">
-        <div className="h-2 rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
+        <div className="h-2 rounded-full" style={{ width: `${Math.min(score, 100)}%`, backgroundColor: color }} />
       </div>
     </div>
   );
 }
 
 export default function StudentDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-    fetch(`${apiUrl}/dashboard/student`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then(setData)
-      .catch(() => setData(null));
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    api.studentIntelligence.summary()
+      .then((data) => {
+        if (!cancelled) setSummary(data as SummaryData);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
-  const scores = data?.skill_scores || {
-    grammar: 78, vocabulary: 72, writing: 75, reading: 80, listening: 70, speaking: 68,
-  };
+  const profile = summary?.profile;
+  const cefr = profile?.cefr_level || profile?.current_level || '—';
+  const ielts = profile?.ielts_estimate;
+  const pte = profile?.pte_estimate;
+  const skills = summary?.skills || {};
 
-  const radarData = Object.entries(scores).map(([skill, score]) => ({ skill, score }));
+  const radarData = Object.entries(skills)
+    .filter(([key]) => SKILL_LABELS[key])
+    .map(([skill, detail]) => ({
+      skill: SKILL_LABELS[skill] || skill,
+      score: detail?.score ?? 0,
+    }));
+
+  const focusLink = (() => {
+    const focus = summary?.recommended_next_focus || '';
+    if (focus.includes('grammar')) return '/grammar-class';
+    if (focus.includes('conversation') || focus.includes('pronunciation')) return '/conversation';
+    if (focus.includes('placement')) return '/assessment';
+    return '/conversation';
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -67,79 +136,140 @@ export default function StudentDashboard() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold">Student Dashboard</h2>
-          <p className="text-gray-500">Track your English learning progress</p>
+          <h2 className="text-2xl font-bold">
+            {profile?.name ? `${profile.name}'s Progress` : 'Student Dashboard'}
+          </h2>
+          <p className="text-gray-500">Your AI Teacher learning intelligence summary</p>
         </div>
 
-        {/* Proficiency Estimates */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-primary text-white rounded-xl p-6">
-            <p className="text-sm opacity-80">CEFR Level</p>
-            <p className="text-4xl font-bold">{data?.learner?.current_cefr || 'B2'}</p>
-          </div>
-          <div className="bg-indigo-600 text-white rounded-xl p-6">
-            <p className="text-sm opacity-80">IELTS Estimate</p>
-            <p className="text-4xl font-bold">{data?.learner?.ielts_estimate || 6.5}</p>
-          </div>
-          <div className="bg-violet-600 text-white rounded-xl p-6">
-            <p className="text-sm opacity-80">PTE Estimate</p>
-            <p className="text-4xl font-bold">{data?.learner?.pte_estimate || 58}</p>
-          </div>
-        </div>
+        {loading && (
+          <div className="text-center py-16 text-gray-500">Loading your learning profile…</div>
+        )}
 
-        {/* Skill Scores */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <SkillCard label="Grammar" score={scores.grammar} color="#3b82f6" />
-          <SkillCard label="Vocabulary" score={scores.vocabulary} color="#8b5cf6" />
-          <SkillCard label="Writing" score={scores.writing} color="#06b6d4" />
-          <SkillCard label="Reading" score={scores.reading} color="#10b981" />
-          <SkillCard label="Listening" score={scores.listening} color="#f59e0b" />
-          <SkillCard label="Speaking" score={scores.speaking} color="#ef4444" />
-        </div>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 border shadow-sm">
-            <h3 className="font-semibold mb-4">Skill Progress Trend</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={MOCK_TREND}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="grammar" stroke="#3b82f6" strokeWidth={2} />
-                <Line type="monotone" dataKey="vocabulary" stroke="#8b5cf6" strokeWidth={2} />
-                <Line type="monotone" dataKey="speaking" stroke="#ef4444" strokeWidth={2} />
-                <Line type="monotone" dataKey="writing" stroke="#06b6d4" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-6">
+            {error}
           </div>
+        )}
 
-          <div className="bg-white rounded-xl p-6 border shadow-sm">
-            <h3 className="font-semibold mb-4">IELTS Prediction Trend</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={MOCK_TREND}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis domain={[4, 9]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="ielts" stroke="#4f46e5" strokeWidth={3} dot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
+        {!loading && !error && summary && !summary.has_data && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8 text-center">
+            <p className="text-blue-900 font-medium mb-2">Welcome! Start your learning journey.</p>
+            <p className="text-blue-700 text-sm mb-4">Take a placement assessment or practice speaking to build your profile.</p>
+            <a href="/assessment" className="inline-block bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium">
+              Start placement assessment
+            </a>
           </div>
+        )}
 
-          <div className="bg-white rounded-xl p-6 border shadow-sm lg:col-span-2">
-            <h3 className="font-semibold mb-4">Skill Radar</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="skill" />
-                <Radar dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {!loading && !error && summary && (
+          <>
+            {/* Proficiency + recommended focus */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-primary text-white rounded-xl p-6">
+                <p className="text-sm opacity-80">CEFR Level</p>
+                <p className="text-4xl font-bold">{cefr}</p>
+              </div>
+              {ielts != null && (
+                <div className="bg-indigo-600 text-white rounded-xl p-6">
+                  <p className="text-sm opacity-80">IELTS Estimate</p>
+                  <p className="text-4xl font-bold">{ielts}</p>
+                </div>
+              )}
+              {pte != null && (
+                <div className="bg-violet-600 text-white rounded-xl p-6">
+                  <p className="text-sm opacity-80">PTE Estimate</p>
+                  <p className="text-4xl font-bold">{pte}</p>
+                </div>
+              )}
+              <div className="bg-emerald-600 text-white rounded-xl p-6">
+                <p className="text-sm opacity-80">Recommended Next Focus</p>
+                <p className="text-lg font-semibold mt-1 capitalize">{summary.recommended_next_focus}</p>
+                <a href={focusLink} className="text-xs underline opacity-90 mt-2 block">Start practice →</a>
+              </div>
+            </div>
+
+            {profile?.confidence_score != null && (
+              <div className="bg-white rounded-xl border p-4 mb-8 text-sm text-gray-600">
+                Confidence score: <span className="font-semibold text-gray-900">{Math.round(profile.confidence_score * 100)}%</span>
+                {summary.latest_progress?.snapshot_at && (
+                  <span className="ml-4">Last updated: {new Date(summary.latest_progress.snapshot_at).toLocaleDateString()}</span>
+                )}
+              </div>
+            )}
+
+            {/* Skill grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+              {Object.entries(SKILL_LABELS).map(([key, label]) => (
+                <SkillCard
+                  key={key}
+                  label={label}
+                  score={skills[key]?.score ?? 0}
+                  color={SKILL_COLORS[key]}
+                  trend={skills[key]?.trend}
+                />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Recent mistakes */}
+              <div className="bg-white rounded-xl p-6 border shadow-sm">
+                <h3 className="font-semibold mb-4">Recent Mistakes</h3>
+                {summary.top_mistakes.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No tracked mistakes yet — great work!</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {summary.top_mistakes.map((m, i) => (
+                      <li key={i} className="text-sm border-b pb-2 last:border-0">
+                        <span className="text-gray-500">{m.mistake_type}</span>
+                        <p className="text-red-600">{m.original_text}</p>
+                        {m.corrected_text && <p className="text-green-700">→ {m.corrected_text}</p>}
+                        <span className="text-xs text-gray-400">×{m.occurrence_count} · {m.severity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Progress snapshot summary */}
+              <div className="bg-white rounded-xl p-6 border shadow-sm">
+                <h3 className="font-semibold mb-4">Progress Snapshot</h3>
+                {summary.latest_progress ? (
+                  <dl className="space-y-2 text-sm">
+                    {summary.latest_progress.cefr_estimate && (
+                      <div className="flex justify-between"><dt className="text-gray-500">CEFR</dt><dd className="font-medium">{summary.latest_progress.cefr_estimate}</dd></div>
+                    )}
+                    {summary.strongest_skill && (
+                      <div className="flex justify-between"><dt className="text-gray-500">Strongest</dt><dd className="font-medium capitalize">{summary.strongest_skill}</dd></div>
+                    )}
+                    {summary.weakest_skill && (
+                      <div className="flex justify-between"><dt className="text-gray-500">Needs work</dt><dd className="font-medium capitalize">{summary.weakest_skill}</dd></div>
+                    )}
+                    {profile?.learning_goal && (
+                      <div className="flex justify-between"><dt className="text-gray-500">Goal</dt><dd className="font-medium">{profile.learning_goal}</dd></div>
+                    )}
+                  </dl>
+                ) : (
+                  <p className="text-gray-500 text-sm">Complete a lesson or assessment to see progress snapshots.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Radar chart */}
+            {radarData.some((d) => d.score > 0) && (
+              <div className="bg-white rounded-xl p-6 border shadow-sm">
+                <h3 className="font-semibold mb-4">Skill Radar</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="skill" />
+                    <Radar dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </>
+        )}
       </main>
     </div>
   );
