@@ -27,16 +27,63 @@ async def build_teacher_context(
             message = last_user[-1].get("content", "")
 
     rag_chunks: list[dict[str, Any]] = []
-    if ToolName.CURRICULUM_KB in tools or ToolName.RAG_SCENARIO in tools:
-        from app.orchestration.rag_agent import retrieve
-        rag_chunks = await retrieve(
-            message,
-            scenario=state.session.scenario,
-            top_k=3,
-            tenant_id=None,
-        )
+    grounding_context = ""
+    knowledge_grounding_meta: dict[str, Any] = {}
+    knowledge_lines_text = ""
+    grounding_obj = None
+    curriculum_lesson_id: str | None = None
+    curriculum_skill: str | None = None
+    if hasattr(state, "lesson") and state.lesson.competency_id:
+        curriculum_lesson_id = state.lesson.competency_id
 
-    knowledge_lines = [f"- [{c.get('source', 'curriculum')}] {c.get('text', '')}" for c in rag_chunks[:3]]
+    if ToolName.CURRICULUM_KB in tools or ToolName.RAG_SCENARIO in tools:
+        from app.services.knowledge_intelligence_service import KnowledgeIntelligenceService
+
+        ki = KnowledgeIntelligenceService()
+        mistake_cats: list[Any] = list(memory_bundle.get("recurring_mistakes", []) or [])
+        target_exam = None
+        student_profile = memory_bundle.get("student_profile", {}) or {}
+        if isinstance(student_profile, dict):
+            target_exam = student_profile.get("target_exam")
+        skill_weaknesses = memory_bundle.get("skill_weaknesses", [])
+        skill_focus = curriculum_skill or (
+            skill_weaknesses[0] if skill_weaknesses else None
+        )
+        grounding = await ki.build_grounding_context(
+            message=message,
+            scenario=state.session.scenario,
+            lesson_id=curriculum_lesson_id,
+            skill_focus=skill_focus,
+            cefr_level=state.student.cefr_level,
+            target_exam=target_exam,
+            recurring_mistakes=mistake_cats,
+            tenant_id=None,
+            retrieve=True,
+        )
+        grounding_obj = grounding
+        grounding_context = grounding.compact_text
+        knowledge_grounding_meta = ki.to_metadata(grounding).model_dump()
+        knowledge_lines_text = ki.grounding_to_knowledge_context(grounding)
+        if grounding.explanations:
+            for i, expl in enumerate(grounding.explanations[:3]):
+                src = grounding.sources[i] if i < len(grounding.sources) else "curriculum"
+                rag_chunks.append(
+                    {
+                        "text": expl,
+                        "source": src,
+                        "topic": grounding.lesson_id or "",
+                        "score": 1.0,
+                        "method": grounding.validation.retrieval_method,
+                    }
+                )
+
+    knowledge_lines = (
+        [line for line in knowledge_lines_text.split("\n") if line.strip()]
+        if ToolName.CURRICULUM_KB in tools or ToolName.RAG_SCENARIO in tools
+        else []
+    )
+    if not knowledge_lines:
+        knowledge_lines = [f"- [{c.get('source', 'curriculum')}] {c.get('text', '')}" for c in rag_chunks[:3]]
     errors = list(memory_bundle.get("learning_mistakes", []) or memory_bundle.get("recent_errors", []))
     for m in memory_bundle.get("conversation", []):
         if m.get("type") == "mistake" and m.get("text"):
@@ -64,6 +111,14 @@ async def build_teacher_context(
             f"Grammar {va.get('grammar_score', '—')}"
         )
 
+    teaching_instruction = state.voice.teaching_instruction or ""
+    if grounding_obj and grounding_obj.compact_text:
+        from app.services.knowledge_intelligence_service import KnowledgeIntelligenceService
+
+        teaching_instruction = KnowledgeIntelligenceService().inject_teaching_instruction(
+            teaching_instruction, grounding_obj
+        )
+
     return {
         "scenario": state.session.scenario,
         "cefr_level": state.student.cefr_level,
@@ -77,6 +132,8 @@ async def build_teacher_context(
         "lesson_objective": state.lesson.objective,
         "competency_id": state.lesson.competency_id,
         "knowledge_context": "\n".join(knowledge_lines) if knowledge_lines else "",
+        "grounding_context": grounding_context,
+        "knowledge_grounding": knowledge_grounding_meta,
         "web_context": web_summary,
         "memory_count": len(memory_bundle.get("conversation", [])),
         "recurring_mistakes": memory_bundle.get("recurring_mistakes", []),
@@ -86,9 +143,8 @@ async def build_teacher_context(
         "preferences": preferences,
         "skill_weaknesses": skill_weaknesses,
         "memory_bundle": memory_bundle,
-        "teaching_instruction": state.voice.teaching_instruction or "",
+        "teaching_instruction": teaching_instruction,
         "teaching_mode": state.voice.teaching_mode or "none",
-        "voice_summary": voice_summary,
         "voice_analysis": state.voice.voice_analysis,
         "turn_count": state.session.turn_count,
         "pending_corrections": state.conversation.pending_corrections,
