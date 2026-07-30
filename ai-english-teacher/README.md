@@ -68,7 +68,9 @@ cat RUNBOOK.md
 ./deploy/cheapest/deploy.sh   # interactive helper
 ```
 
-**One-click:** Connect this repo to [Render Blueprints](https://dashboard.render.com/blueprints) — it reads `render.yaml` automatically. Set `DATABASE_URL` from a free [Neon](https://neon.tech) project.
+**Production CI/CD:** See **[docs/deployment/README.md](../docs/deployment/README.md)** (repo root).
+
+**One-click:** Render Blueprint → repo root **`render.yaml`**, branch **`main`**. Set `DATABASE_URL` and `OPENAI_API_KEY` on the API service.
 
 | Component | Provider | Cost |
 |-----------|----------|------|
