@@ -7,10 +7,12 @@ from sqlalchemy.orm import selectinload
 
 from app.ai.openai_client import extract_teacher_response
 from app.orchestration import run_conversation_turn
+from app.orchestration.voice.lesson_report import generate_lesson_report
+from app.orchestration.voice.voice_turn import run_voice_turn
 from app.core.database import get_db
 from app.core.security import TokenPayload, get_current_user
 from app.models import Conversation, ConversationMessage, LearnerProfile
-from app.schemas import ConversationCreate, ConversationResponse, MessageCreate, MessageResponse
+from app.schemas import ConversationCreate, ConversationResponse, MessageCreate, MessageResponse, VoiceTurnRequest
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -33,7 +35,7 @@ async def start_conversation(
         tenant_id=user.tenant_id,
         learner_id=learner.id,
         scenario=req.scenario,
-        context=req.context,
+        context={"persona_id": req.persona_id, **req.context},
     )
     db.add(conv)
     await db.flush()
@@ -114,3 +116,107 @@ async def send_message(
             metadata=response_metadata,
         ),
     }
+
+
+@router.post("/{conversation_id}/voice-turn")
+async def voice_turn_in_conversation(
+    conversation_id: UUID,
+    req: VoiceTurnRequest,
+    user: TokenPayload = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Voice-first turn within an active conversation — unified pipeline."""
+    conv = await db.scalar(
+        select(Conversation).options(selectinload(Conversation.messages)).where(Conversation.id == conversation_id)
+    )
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    learner = await _get_learner(user, db)
+    if not req.transcript and not req.audio_base64:
+        raise HTTPException(status_code=400, detail="Provide transcript or audio_base64")
+
+    history = [{"role": m.role, "content": m.content} for m in conv.messages]
+    persona_id = req.persona_id or (conv.context or {}).get("persona_id", "conversation_partner")
+
+    result = await run_voice_turn(
+        session_id=str(conv.id),
+        learner_id=str(learner.id),
+        tenant_id=str(user.tenant_id) if user.tenant_id else None,
+        scenario=conv.scenario,
+        cefr_level=learner.current_cefr or "B1",
+        message_history=history,
+        transcript=req.transcript,
+        audio_base64=req.audio_base64,
+        audio_mime_type=req.audio_mime_type,
+        duration_seconds=req.duration_seconds,
+        audio_metrics=req.audio_metrics,
+        persona_id=persona_id,
+        conversation_id=str(conv.id),
+    )
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    transcript = result["transcript"]
+    response_text = result["response"]
+
+    user_msg = ConversationMessage(conversation_id=conv.id, role="user", content=transcript)
+    db.add(user_msg)
+
+    response_metadata = {
+        **result.get("agent_output", {}),
+        "voice_scores": result.get("voice_scores"),
+        "teaching_mode": result.get("teaching_mode"),
+        "corrections": result.get("corrections"),
+        "estimates": result.get("estimates"),
+        "_orchestration": result.get("metadata"),
+    }
+    assistant_msg = ConversationMessage(
+        conversation_id=conv.id,
+        role="assistant",
+        content=response_text,
+        metadata_=response_metadata,
+    )
+    db.add(assistant_msg)
+    await db.flush()
+
+    return {
+        "transcript": transcript,
+        "response": response_text,
+        "teaching_mode": result.get("teaching_mode"),
+        "corrections": result.get("corrections", []),
+        "voice_scores": result.get("voice_scores"),
+        "estimates": result.get("estimates"),
+        "user_message": MessageResponse(role="user", content=transcript),
+        "assistant_message": MessageResponse(
+            role="assistant",
+            content=response_text,
+            metadata=response_metadata,
+        ),
+    }
+
+
+@router.get("/{conversation_id}/lesson-report")
+async def get_lesson_report(
+    conversation_id: UUID,
+    user: TokenPayload = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    conv = await db.scalar(select(Conversation).where(Conversation.id == conversation_id))
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    learner = await _get_learner(user, db)
+    persona_id = (conv.context or {}).get("persona_id")
+
+    report = await generate_lesson_report(
+        db=db,
+        learner_id=learner.id,
+        tenant_id=user.tenant_id,
+        conversation_id=conversation_id,
+        persona_id=persona_id,
+        scenario=conv.scenario,
+    )
+    if report.get("error"):
+        raise HTTPException(status_code=404, detail=report["error"])
+    return report

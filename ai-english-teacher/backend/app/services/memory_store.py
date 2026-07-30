@@ -141,6 +141,36 @@ async def persist_mistake(
         logger.warning("memory_store.persist_failed", extra={"error": str(exc)})
 
 
+async def get_recurring_mistakes(
+    learner_id: str,
+    tenant_id: str,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Return frequently repeated mistakes for lesson reports."""
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            lid = UUID(learner_id)
+            result = await session.scalars(
+                select(ErrorTracking)
+                .where(ErrorTracking.learner_id == lid)
+                .order_by(ErrorTracking.occurrence_count.desc(), ErrorTracking.last_seen_at.desc())
+                .limit(limit)
+            )
+            return [
+                {
+                    "error": err.error_text,
+                    "correction": err.correction,
+                    "category": err.error_category,
+                    "count": err.occurrence_count,
+                }
+                for err in result.all()
+            ]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("memory_store.recurring_failed", extra={"error": str(exc)})
+        return []
+
+
 async def persist_preference(
     *,
     learner_id: str,

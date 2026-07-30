@@ -96,10 +96,20 @@ class AssessmentResultResponse(BaseModel):
 class ConversationCreate(BaseModel):
     scenario: str
     context: dict = Field(default_factory=dict)
+    persona_id: str = "conversation_partner"
 
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=5000)
+
+
+class VoiceTurnRequest(BaseModel):
+    transcript: str | None = Field(None, max_length=10000)
+    audio_base64: str | None = None
+    audio_mime_type: str = "audio/webm"
+    duration_seconds: float | None = Field(None, ge=0, le=600)
+    audio_metrics: dict | None = None
+    persona_id: str = "conversation_partner"
 
 
 class MessageResponse(BaseModel):

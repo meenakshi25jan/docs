@@ -20,6 +20,10 @@ async def run_conversation_turn(
     message: str,
     message_history: list[dict[str, str]],
     use_orchestration: bool | None = None,
+    persona_id: str | None = None,
+    teaching_instruction: str | None = None,
+    teaching_mode: str | None = None,
+    voice_analysis: dict[str, Any] | None = None,
 ) -> AgentOutput:
     enabled = use_orchestration if use_orchestration is not None else True
 
@@ -44,6 +48,10 @@ async def run_conversation_turn(
         cefr_level=cefr_level,
         message=message,
         message_history=message_history,
+        persona_id=persona_id,
+        teaching_instruction=teaching_instruction,
+        teaching_mode=teaching_mode,
+        voice_analysis=voice_analysis,
     )
     data: dict[str, Any] = dict(final.get("agent_output", {}))
     if not data.get("response"):

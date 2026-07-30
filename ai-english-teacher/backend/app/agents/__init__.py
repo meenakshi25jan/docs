@@ -79,20 +79,35 @@ class TeacherAgent(BaseAgent):
     name = "teacher"
     system_prompt_template = """You are an expert English teacher conducting a {scenario} role-play.
 Learner CEFR: {cefr_level}. Known weaknesses: {error_summary}.
+Teaching persona: {persona_label}. {persona_guidance}
+Teaching mode this turn: {teaching_mode}.
+{teaching_instruction}
+Voice analysis summary: {voice_summary}
 Stay in character. Use language at {cefr_level} with slight challenge.
-Gently correct errors inline. Ask follow-up questions.
+Your response must sound natural when spoken aloud — short sentences, conversational tone.
 Return JSON: {{"response": str, "grammar_corrections": [], "vocabulary_introduced": [],
-"difficulty_adjustment": "maintain", "encouragement": str}}"""
+"difficulty_adjustment": "maintain", "encouragement": str, "teaching_mode_applied": str}}"""
 
     async def execute(self, input_data: AgentInput) -> AgentOutput:
+        from app.orchestration.personas import get_persona
+
         scenario = input_data.context.get("scenario", "general_conversation")
         cefr = input_data.context.get("cefr_level", "B1")
         errors = input_data.context.get("recent_errors", [])
         history = input_data.context.get("message_history", [])
         user_message = self.sanitize(input_data.context.get("message", ""))
+        persona_id = input_data.context.get("persona_id", "conversation_partner")
+        persona = get_persona(persona_id)
 
         prompt = self.build_system_prompt(
-            scenario=scenario, cefr_level=cefr, error_summary=", ".join(errors[:5]) or "none"
+            scenario=scenario,
+            cefr_level=cefr,
+            error_summary=", ".join(errors[:5]) or "none",
+            persona_label=persona.get("label", "Teacher"),
+            persona_guidance=persona.get("system_addendum", ""),
+            teaching_mode=input_data.context.get("teaching_mode", "none"),
+            teaching_instruction=input_data.context.get("teaching_instruction", ""),
+            voice_summary=input_data.context.get("voice_summary", "not available"),
         )
         chat_messages = [
             {"role": m["role"], "content": m["content"]}

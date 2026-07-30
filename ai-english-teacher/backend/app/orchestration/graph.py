@@ -99,6 +99,10 @@ async def node_build_context(state: ConversationState) -> dict[str, Any]:
         memories=state.get("memories", []),
         rag_chunks=state.get("rag_chunks", []),
         intent=state.get("intent", "conversation"),
+        persona_id=state.get("persona_id"),
+        teaching_instruction=state.get("teaching_instruction"),
+        teaching_mode=state.get("teaching_mode"),
+        voice_analysis=state.get("voice_analysis"),
     )
     return {"enriched_context": enriched, "agent_path": _append_path(state, "ContextManagerAgent")}
 
@@ -219,6 +223,10 @@ async def invoke_conversation_graph(
     cefr_level: str,
     message: str,
     message_history: list[dict[str, str]],
+    persona_id: str | None = None,
+    teaching_instruction: str | None = None,
+    teaching_mode: str | None = None,
+    voice_analysis: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     trace_id = str(uuid.uuid4())
     initial: ConversationState = {
@@ -232,6 +240,10 @@ async def invoke_conversation_graph(
         "agent_path": [],
         "trace_id": trace_id,
         "blocked": False,
+        "persona_id": persona_id,
+        "teaching_instruction": teaching_instruction,
+        "teaching_mode": teaching_mode,
+        "voice_analysis": voice_analysis,
     }
     graph = get_conversation_graph()
     final = await graph.ainvoke(initial)

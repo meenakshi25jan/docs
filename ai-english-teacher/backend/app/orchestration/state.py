@@ -24,3 +24,7 @@ class ConversationState(TypedDict, total=False):
     block_reason: str | None
     model_hint: str | None
     metadata: dict[str, Any]
+    persona_id: str | None
+    teaching_instruction: str | None
+    teaching_mode: str | None
+    voice_analysis: dict[str, Any] | None
