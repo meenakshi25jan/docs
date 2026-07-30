@@ -84,8 +84,8 @@ async def run_voice_turn(
         use_orchestration=True,
         persona_id=persona_id,
         teaching_instruction=teaching_instruction,
-        voice_analysis=voice_result,
         teaching_mode=decision.get("teaching_mode"),
+        voice_analysis=voice_result,
     )
 
     response_text = extract_teacher_response(output.data) or "Could you tell me more about that?"

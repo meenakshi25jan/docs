@@ -6,8 +6,9 @@ from typing import Any
 
 from app.agents.base import AgentInput, AgentOutput
 from app.ai.openai_client import extract_teacher_response
-from app.orchestration.graph import invoke_conversation_graph
 from app.agents import AGENT_REGISTRY
+from app.core.config import get_settings
+from app.orchestration.graph import invoke_conversation_graph
 
 
 async def run_conversation_turn(
@@ -25,7 +26,9 @@ async def run_conversation_turn(
     teaching_mode: str | None = None,
     voice_analysis: dict[str, Any] | None = None,
 ) -> AgentOutput:
+    settings = get_settings()
     enabled = use_orchestration if use_orchestration is not None else True
+    cognitive = getattr(settings, "COGNITIVE_ORCHESTRATION_ENABLED", True)
 
     if not enabled:
         output = await AGENT_REGISTRY["teacher"].execute(AgentInput(
@@ -40,6 +43,41 @@ async def run_conversation_turn(
         ))
         return output
 
+    if cognitive:
+        from app.cognitive.orchestrator import process_cognitive_turn
+
+        result = await process_cognitive_turn(
+            session_id=session_id,
+            learner_id=learner_id,
+            tenant_id=tenant_id,
+            message=message,
+            message_history=message_history,
+            scenario=scenario,
+            cefr_level=cefr_level,
+            persona_id=persona_id or "conversation_partner",
+            precomputed_voice_analysis=voice_analysis,
+            teaching_instruction=teaching_instruction,
+            teaching_mode=teaching_mode,
+        )
+        data: dict[str, Any] = dict(result.get("agent_output", {}))
+        if not data.get("response"):
+            data["response"] = result.get("response") or extract_teacher_response(data) or "Could you tell me more?"
+
+        metadata = {
+            "trace_id": result.get("cognitive_trace", {}).get("trace_id"),
+            "intent": result.get("intent"),
+            "workflow": result.get("workflow"),
+            "tools_invoked": result.get("tools_invoked"),
+            "tools_skipped": result.get("tools_skipped"),
+            "agents_invoked": result.get("agents_invoked"),
+            "agents_skipped": result.get("agents_skipped"),
+            "model_tier": result.get("model_tier"),
+            "teaching_mode": result.get("teaching_mode"),
+            "cognitive_trace": result.get("cognitive_trace"),
+            "orchestration": "cognitive",
+        }
+        return AgentOutput(data=data, metadata=metadata)
+
     final = await invoke_conversation_graph(
         session_id=session_id,
         learner_id=learner_id,
@@ -53,7 +91,7 @@ async def run_conversation_turn(
         teaching_mode=teaching_mode,
         voice_analysis=voice_analysis,
     )
-    data: dict[str, Any] = dict(final.get("agent_output", {}))
+    data = dict(final.get("agent_output", {}))
     if not data.get("response"):
         data["response"] = extract_teacher_response(data) or "Could you tell me more about that?"
 
@@ -64,6 +102,6 @@ async def run_conversation_turn(
         "intent": final.get("intent"),
         "next_agent": final.get("next_agent"),
         "rag_chunks": final.get("rag_chunks", []),
-        "orchestration": True,
+        "orchestration": "langgraph",
     })
     return AgentOutput(data=data, metadata=metadata)

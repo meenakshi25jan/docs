@@ -63,13 +63,16 @@ class TestRAG:
 class TestConversationRunner:
     @pytest.mark.asyncio
     async def test_run_conversation_turn_with_mock_agents(self):
-        async def fake_run_agent(agent_key, state):
-            return AgentOutput(data={
+        async def fake_teacher_brain(context, **kwargs):
+            return {
                 "response": "Present perfect uses have/has + past participle.",
                 "grammar_corrections": [],
-            })
+            }
 
-        with patch("app.orchestration.graph._run_agent", side_effect=fake_run_agent):
+        with patch(
+            "app.cognitive.tool_executor.execute_teacher_brain",
+            side_effect=fake_teacher_brain,
+        ):
             output = await run_conversation_turn(
                 session_id="test-session-1",
                 learner_id="learner-1",
@@ -80,5 +83,5 @@ class TestConversationRunner:
                 message_history=[],
             )
         assert "present perfect" in output.data.get("response", "").lower()
-        assert output.metadata.get("orchestration") is True
-        assert "OrchestratorAgent" in output.metadata.get("agent_path", [])
+        assert output.metadata.get("orchestration") == "cognitive"
+        assert "teacher_brain" in str(output.metadata.get("cognitive_trace", {}))

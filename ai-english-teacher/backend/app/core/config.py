@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     # LLM provider: auto | copilot | azure | openai | ollama | mock
     AI_PROVIDER: str = "auto"
+    COGNITIVE_ORCHESTRATION_ENABLED: bool = True
     OLLAMA_BASE_URL: str = ""
     OLLAMA_MODEL: str = "llama3.2"
 
