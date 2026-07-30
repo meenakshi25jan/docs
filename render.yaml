@@ -55,6 +55,7 @@ services:
     rootDir: ai-english-teacher/frontend
     buildCommand: npm ci && npm run build
     startCommand: npm start
+    # npm start runs standalone server; build log must list /grammar-class
     envVars:
       - key: NODE_VERSION
         value: "20"

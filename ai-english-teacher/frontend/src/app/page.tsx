@@ -21,9 +21,15 @@ export default function HomePage() {
           Personalized training for IELTS, PTE, TOEFL, and Corporate English.
           Get CEFR-level assessment, role-play practice, and AI-powered feedback.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-wrap gap-4 justify-center">
           <Link href="/register" className="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90">
             Start Free Assessment
+          </Link>
+          <Link href="/conversation" className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-white">
+            Voice Practice
+          </Link>
+          <Link href="/grammar-class" className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-white">
+            Grammar Class
           </Link>
           <Link href="/dashboard/student" className="px-8 py-3 border border-gray-300 rounded-lg font-medium hover:bg-white">
             View Dashboard

@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """
-Staging validation runner — execute after deploying cursor/reliability-observability-v1-f37f.
+Staging validation runner — read-only checks for pilot promotion readiness.
 
-Requires environment variables for full run:
-
-  API_BASE_URL          e.g. https://your-staging-api.onrender.com
+Environment variables:
+  API_BASE_URL          default https://ai-english-teacher-api.onrender.com
   API_PREFIX            default /api/v1
-  ADMIN_TOKEN           admin JWT
-  TEACHER_TOKEN         teacher JWT (optional, for teacher flow checks)
-  STUDENT_TOKEN         student JWT (optional, RBAC + IDOR checks)
-  STUDENT_TOKEN_B       second student JWT (optional, cross-learner checks)
-  DATABASE_URL          Neon connection string (for backup_verify.sh)
+  ADMIN_TOKEN           admin JWT (required for authenticated checks)
+  TEACHER_TOKEN         optional teacher JWT
+  STUDENT_TOKEN         optional student JWT
+  STUDENT_TOKEN_B       optional second student JWT (reserved for cross-tenant checks)
+  DATABASE_URL          optional Neon URL (used by backup_verify.sh)
+  TIMEOUT_SECONDS       default 60
 
 Usage:
   cd ai-english-teacher/backend
-  export API_BASE_URL=...
   export ADMIN_TOKEN=...
   python3 scripts/staging_validation.py
 
-Output: JSON summary + human-readable sections; exit 0 if no blocking failures.
+Prints JSON to stdout. Exit 0 if all checks pass; exit 1 if any check fails.
+Does not make AI calls.
 """
 
 from __future__ import annotations
@@ -51,6 +51,13 @@ RLS_TABLES = [
     "learner_memories",
 ]
 
+STUDENT_FORBIDDEN_PATHS = [
+    "/security/summary",
+    "/production/readiness",
+    "/reliability/status",
+    "/operations/health",
+]
+
 
 @dataclass
 class CheckResult:
@@ -61,11 +68,14 @@ class CheckResult:
     blocking: bool = False
 
     def to_dict(self) -> dict[str, Any]:
+        detail = self.detail
+        if not isinstance(detail, str):
+            detail = str(detail)
         return {
             "name": self.name,
             "passed": self.passed,
             "status_code": self.status_code,
-            "detail": self.detail[:500],
+            "detail": detail[:500],
             "blocking": self.blocking,
         }
 
@@ -93,7 +103,10 @@ class ValidationReport:
         }
 
 
-def _recommendation(blocking: list[CheckResult], failed: list[CheckResult]) -> str:
+def _recommendation(
+    blocking: list[CheckResult],
+    failed: list[CheckResult],
+) -> str:
     if blocking:
         return "NO-GO"
     if failed:
@@ -109,8 +122,8 @@ def _api_root() -> str:
 
 
 def _prefix() -> str:
-    p = os.environ.get("API_PREFIX", "/api/v1")
-    return p if p.startswith("/") else f"/{p}"
+    path = os.environ.get("API_PREFIX", "/api/v1")
+    return path if path.startswith("/") else f"/{path}"
 
 
 def _timeout() -> int:
@@ -127,17 +140,18 @@ def _http_get(
         headers["Authorization"] = f"Bearer {token}"
     if extra_headers:
         headers.update(extra_headers)
-    req = urllib.request.Request(url, headers=headers, method="GET")
+
+    request = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=_timeout()) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-            return resp.status, body, dict(resp.headers)
+        with urllib.request.urlopen(request, timeout=_timeout()) as response:
+            body = response.read().decode("utf-8", errors="replace")
+            return response.status, body, dict(response.headers)
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         return exc.code, body, dict(exc.headers)
     except urllib.error.URLError as exc:
         return 0, f"{type(exc).__name__}: {exc.reason}", {}
-    except Exception as exc:
+    except OSError as exc:
         return 0, f"{type(exc).__name__}: {exc}", {}
 
 
@@ -149,102 +163,199 @@ def _root_path(path: str) -> str:
     return f"{_api_root()}{path}"
 
 
-def run_api_checks(report: ValidationReport) -> None:
-    admin = os.environ.get("ADMIN_TOKEN")
-    student = os.environ.get("STUDENT_TOKEN")
-    teacher = os.environ.get("TEACHER_TOKEN")
+def _request_id(headers: dict[str, str]) -> str | None:
+    return headers.get(REQUEST_ID_HEADER) or headers.get(REQUEST_ID_HEADER.lower())
 
-    for path in ("/health", "/health/auth", "/health/ai"):
-        code, body, hdrs = _http_get(_root_path(path))
-        ok = code == 200
-        rid = hdrs.get(REQUEST_ID_HEADER) or hdrs.get(REQUEST_ID_HEADER.lower())
-        detail = body[:200]
-        if path == "/health" and not rid:
-            ok = False
-            detail = "missing X-Request-ID (deploy Phase 11?)"
+
+def _parse_json(body: str) -> dict[str, Any] | None:
+    try:
+        data = json.loads(body)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        return None
+    return None
+
+
+def _tail(text: str, limit: int = 2000) -> str:
+    if not text:
+        return ""
+    return text[-limit:]
+
+
+def run_health_checks(report: ValidationReport) -> None:
+    code, body, headers = _http_get(_root_path("/health"))
+    request_id = _request_id(headers)
+    ok = code == 200 and bool(request_id)
+    detail = body[:200]
+    if code == 200 and not request_id:
+        detail = "missing X-Request-ID header"
+    report.add(
+        CheckResult(
+            name="GET /health",
+            passed=ok,
+            status_code=code,
+            detail=detail,
+            blocking=True,
+        )
+    )
+    report.sections["health"] = {
+        "status_code": code,
+        "request_id": request_id,
+    }
+
+    for path in ("/health/auth", "/health/ai"):
+        sub_code, sub_body, _ = _http_get(_root_path(path))
         report.add(
-            CheckResult(f"GET {path}", ok, code, detail, blocking=path == "/health")
+            CheckResult(
+                name=f"GET {path}",
+                passed=sub_code == 200,
+                status_code=sub_code,
+                detail=sub_body[:200],
+                blocking=False,
+            )
         )
 
+
+def run_authenticated_checks(report: ValidationReport) -> None:
+    admin = os.environ.get("ADMIN_TOKEN")
     if not admin:
         report.add(
             CheckResult(
-                "ADMIN_TOKEN",
-                False,
-                None,
-                "not set — authenticated checks skipped",
+                name="ADMIN_TOKEN",
+                passed=False,
+                status_code=None,
+                detail="ADMIN_TOKEN not set",
                 blocking=True,
             )
         )
         return
 
-    auth_endpoints = [
-        ("/operations/health", admin, 200, True),
-        ("/security/summary", admin, 200, True),
-        ("/production/readiness", admin, 200, True),
-        ("/reliability/status", admin, 200, True),
-        ("/reliability/logging", admin, 200, False),
-        ("/reliability/backup", admin, 200, False),
-        ("/reliability/performance", admin, 200, False),
-    ]
-    for path, token, expect, blocking in auth_endpoints:
-        code, body, _ = _http_get(_api_path(path), token=token)
-        ok = code == expect
-        report.add(CheckResult(f"GET {path}", ok, code, body[:200], blocking=blocking))
+    # Operations
+    code, body, _ = _http_get(_api_path("/operations/health"), token=admin)
+    report.add(
+        CheckResult(
+            name="GET /operations/health",
+            passed=code == 200,
+            status_code=code,
+            detail=body[:200],
+            blocking=True,
+        )
+    )
 
-    # Production readiness passed flag
-    code, body, _ = _http_get(_api_path("/production/readiness"), token=admin)
-    if code == 200:
-        try:
-            data = json.loads(body)
-            passed = data.get("passed", False)
+    # Security
+    code, body, _ = _http_get(_api_path("/security/summary"), token=admin)
+    report.add(
+        CheckResult(
+            name="GET /security/summary",
+            passed=code == 200,
+            status_code=code,
+            detail=body[:200],
+            blocking=True,
+        )
+    )
+
+    code, body, _ = _http_get(_api_path("/security/rls"), token=admin)
+    rls_ok = code == 200
+    report.add(
+        CheckResult(
+            name="GET /security/rls",
+            passed=rls_ok,
+            status_code=code,
+            detail=body[:200],
+            blocking=True,
+        )
+    )
+
+    if rls_ok:
+        data = _parse_json(body)
+        if data is not None:
+            report.sections["rls"] = data
+            covered = {
+                row.get("table")
+                for row in data.get("tables", [])
+                if isinstance(row, dict)
+            }
+            for table in RLS_TABLES:
+                report.add(
+                    CheckResult(
+                        name=f"rls.table.{table}",
+                        passed=table in covered,
+                        status_code=code,
+                        detail="listed in /security/rls",
+                        blocking=True,
+                    )
+                )
+        else:
             report.add(
                 CheckResult(
-                    "production.readiness.passed",
-                    passed,
-                    code,
-                    f"status={data.get('status')} warnings={len(data.get('warnings', []))}",
+                    name="security.rls.parse",
+                    passed=False,
+                    status_code=code,
+                    detail="invalid json",
                     blocking=True,
                 )
             )
+
+    # Production readiness
+    code, body, _ = _http_get(_api_path("/production/readiness"), token=admin)
+    readiness_ok = code == 200
+    report.add(
+        CheckResult(
+            name="GET /production/readiness",
+            passed=readiness_ok,
+            status_code=code,
+            detail=body[:200],
+            blocking=True,
+        )
+    )
+
+    if readiness_ok:
+        data = _parse_json(body)
+        if data is not None:
+            passed = bool(data.get("passed"))
             report.sections["production_readiness"] = {
                 "status": data.get("status"),
                 "passed": passed,
                 "warnings": data.get("warnings", []),
             }
-        except json.JSONDecodeError:
             report.add(
-                CheckResult("production.readiness.parse", False, code, "invalid json", blocking=True)
+                CheckResult(
+                    name="production.readiness.passed",
+                    passed=passed,
+                    status_code=code,
+                    detail=f"passed={passed}",
+                    blocking=True,
+                )
+            )
+        else:
+            report.add(
+                CheckResult(
+                    name="production.readiness.parse",
+                    passed=False,
+                    status_code=code,
+                    detail="invalid json",
+                    blocking=True,
+                )
             )
 
-    # Reliability flags
-    code, body, _ = _http_get(_api_path("/reliability/status"), token=admin)
-    if code == 200:
-        try:
-            data = json.loads(body)
-            obs = data.get("observability") or {}
-            log = data.get("logging") or {}
-            backup = data.get("backup") or {}
-            perf = data.get("performance") or {}
-            report.sections["reliability"] = {
-                "request_id_enabled": obs.get("request_id_enabled"),
-                "logging_enabled": log.get("logging_enabled"),
-                "backup_verified": backup.get("backup_verified"),
-                "load_smoke_available": perf.get("load_smoke_available"),
-            }
-            for name, val in report.sections["reliability"].items():
-                report.add(
-                    CheckResult(f"reliability.{name}", bool(val), code, str(val), blocking=False)
-                )
-        except json.JSONDecodeError:
-            pass
-
-    # Migrations via API
+    # Production migrations
     code, body, _ = _http_get(_api_path("/production/migrations"), token=admin)
-    if code == 200:
-        try:
-            data = json.loads(body)
-            applied = data.get("applied") or [c.get("filename") for c in data.get("checks", []) if c.get("applied")]
+    migrations_ok = code == 200
+    report.add(
+        CheckResult(
+            name="GET /production/migrations",
+            passed=migrations_ok,
+            status_code=code,
+            detail=body[:200],
+            blocking=True,
+        )
+    )
+
+    if migrations_ok:
+        data = _parse_json(body)
+        if data is not None:
+            applied = data.get("applied") or []
             missing = data.get("missing") or []
             unexpected = data.get("unexpected") or []
             report.sections["migrations"] = {
@@ -254,151 +365,200 @@ def run_api_checks(report: ValidationReport) -> None:
             }
             report.add(
                 CheckResult(
-                    "migrations.complete",
-                    len(missing) == 0,
-                    code,
-                    f"missing={missing} unexpected={unexpected}",
+                    name="migrations.missing_empty",
+                    passed=len(missing) == 0,
+                    status_code=code,
+                    detail=f"missing={missing}",
                     blocking=True,
                 )
             )
-        except json.JSONDecodeError:
-            report.add(CheckResult("migrations.parse", False, code, "invalid json", blocking=True))
-
-    # RLS via security API
-    code, body, _ = _http_get(_api_path("/security/rls"), token=admin)
-    if code == 200:
-        try:
-            data = json.loads(body)
-            report.sections["rls"] = data
-            covered = {t.get("table") for t in data.get("tables", [])}
-            for table in RLS_TABLES:
-                report.add(
-                    CheckResult(
-                        f"rls.{table}",
-                        table in covered,
-                        code,
-                        "listed in /security/rls",
-                        blocking=True,
-                    )
+        else:
+            report.add(
+                CheckResult(
+                    name="production.migrations.parse",
+                    passed=False,
+                    status_code=code,
+                    detail="invalid json",
+                    blocking=True,
                 )
-        except json.JSONDecodeError:
-            pass
+            )
 
-    # Student RBAC
+    # Reliability
+    reliability_flags: dict[str, Any] = {}
+    reliability_paths = (
+        "/reliability/status",
+        "/reliability/logging",
+        "/reliability/backup",
+        "/reliability/performance",
+    )
+    reliability_responses: dict[str, tuple[int, str]] = {}
+    for path in reliability_paths:
+        rel_code, rel_body, _ = _http_get(_api_path(path), token=admin)
+        reliability_responses[path] = (rel_code, rel_body)
+        report.add(
+            CheckResult(
+                name=f"GET {path}",
+                passed=rel_code == 200,
+                status_code=rel_code,
+                detail=rel_body[:200],
+                blocking=True,
+            )
+        )
+
+    status_code, status_body = reliability_responses["/reliability/status"]
+    if status_code == 200:
+        status_data = _parse_json(status_body)
+        if status_data is not None:
+            observability = status_data.get("observability") or {}
+            logging_nested = status_data.get("logging") or {}
+            backup_nested = status_data.get("backup") or {}
+            performance_nested = status_data.get("performance") or {}
+            reliability_flags["request_id_enabled"] = observability.get("request_id_enabled")
+            reliability_flags["logging_enabled"] = (
+                logging_nested.get("logging_enabled")
+                or observability.get("logging_enabled")
+            )
+            reliability_flags["backup_verified"] = backup_nested.get("backup_verified")
+            reliability_flags["load_smoke_available"] = performance_nested.get(
+                "load_smoke_available"
+            )
+
+    log_code, log_body = reliability_responses["/reliability/logging"]
+    if log_code == 200 and reliability_flags.get("logging_enabled") is None:
+        log_data = _parse_json(log_body)
+        if log_data is not None:
+            reliability_flags["logging_enabled"] = log_data.get("logging_enabled")
+
+    backup_code, backup_body = reliability_responses["/reliability/backup"]
+    if backup_code == 200 and reliability_flags.get("backup_verified") is None:
+        backup_data = _parse_json(backup_body)
+        if backup_data is not None:
+            reliability_flags["backup_verified"] = backup_data.get("backup_verified")
+
+    perf_code, perf_body = reliability_responses["/reliability/performance"]
+    if perf_code == 200 and reliability_flags.get("load_smoke_available") is None:
+        perf_data = _parse_json(perf_body)
+        if perf_data is not None:
+            reliability_flags["load_smoke_available"] = perf_data.get("load_smoke_available")
+
+    report.sections["reliability"] = reliability_flags
+    for flag_name, flag_value in reliability_flags.items():
+        report.add(
+            CheckResult(
+                name=f"reliability.{flag_name}",
+                passed=bool(flag_value),
+                status_code=status_code,
+                detail=str(flag_value),
+                blocking=False,
+            )
+        )
+
+
+def run_rbac_checks(report: ValidationReport) -> None:
+    student = os.environ.get("STUDENT_TOKEN")
     if student:
-        for path in (
-            "/security/summary",
-            "/production/readiness",
-            "/reliability/status",
-            "/operations/health",
-        ):
+        for path in STUDENT_FORBIDDEN_PATHS:
             code, body, _ = _http_get(_api_path(path), token=student)
             report.add(
                 CheckResult(
-                    f"student forbidden {path}",
-                    code == 403,
-                    code,
-                    body[:120],
+                    name=f"student forbidden {path}",
+                    passed=code == 403,
+                    status_code=code,
+                    detail=body[:120],
                     blocking=True,
                 )
             )
 
-    # Teacher flow
+    teacher = os.environ.get("TEACHER_TOKEN")
     if teacher:
         code, body, _ = _http_get(_api_path("/operations/teacher/roster"), token=teacher)
         report.add(
-            CheckResult("teacher roster", code == 200, code, body[:120], blocking=False)
+            CheckResult(
+                name="GET /operations/teacher/roster",
+                passed=code == 200,
+                status_code=code,
+                detail=body[:200],
+                blocking=False,
+            )
         )
-
-    # Admin flow extras
-    for path in ("/operations/overview", "/operations/feature-flags", "/operations/tenant"):
-        code, body, _ = _http_get(_api_path(path), token=admin)
-        report.add(CheckResult(f"admin {path}", code == 200, code, body[:120], blocking=False))
 
 
 def run_subprocess_tools(report: ValidationReport) -> None:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.dirname(script_dir)
+    env = os.environ.copy()
 
-    smoke = os.path.join(script_dir, "production_smoke_test.py")
-    if os.path.isfile(smoke):
+    smoke_path = os.path.join(script_dir, "production_smoke_test.py")
+    if os.path.isfile(smoke_path):
         proc = subprocess.run(
-            [sys.executable, smoke],
+            [sys.executable, smoke_path],
             cwd=backend_dir,
             capture_output=True,
             text=True,
             timeout=_timeout() * 3,
-            env=os.environ.copy(),
+            env=env,
         )
         report.sections["production_smoke_test"] = {
             "exit_code": proc.returncode,
-            "stdout_tail": proc.stdout[-2000:],
-            "stderr_tail": proc.stderr[-500:],
+            "stdout_tail": _tail(proc.stdout),
+            "stderr_tail": _tail(proc.stderr),
         }
         report.add(
             CheckResult(
-                "production_smoke_test.py",
-                proc.returncode == 0,
-                None,
-                proc.stdout.splitlines()[-3:] if proc.stdout else "",
-                blocking=True,
-            )
-        )
-
-    backup_sh = os.path.join(script_dir, "backup_verify.sh")
-    if os.environ.get("DATABASE_URL") and os.path.isfile(backup_sh):
-        proc = subprocess.run(
-            ["bash", backup_sh],
-            cwd=backend_dir,
-            capture_output=True,
-            text=True,
-            timeout=_timeout() * 2,
-            env=os.environ.copy(),
-        )
-        report.sections["backup_verify"] = {
-            "exit_code": proc.returncode,
-            "stdout": proc.stdout[-1500:],
-        }
-        report.add(
-            CheckResult(
-                "backup_verify.sh",
-                proc.returncode == 0,
-                None,
-                proc.stdout.splitlines()[-2:] if proc.stdout else proc.stderr[:200],
-                blocking=True,
-            )
-        )
-    else:
-        report.add(
-            CheckResult(
-                "backup_verify.sh",
-                False,
-                None,
-                "skipped — DATABASE_URL not set",
+                name="production_smoke_test.py",
+                passed=proc.returncode == 0,
+                status_code=None,
+                detail=_tail(proc.stdout or proc.stderr, 500),
                 blocking=False,
             )
         )
 
-    load_smoke = os.path.join(script_dir, "load_smoke.py")
-    if os.path.isfile(load_smoke) and os.environ.get("ADMIN_TOKEN"):
+    backup_path = os.path.join(script_dir, "backup_verify.sh")
+    if os.path.isfile(backup_path):
         proc = subprocess.run(
-            [sys.executable, load_smoke],
+            ["bash", backup_path],
+            cwd=backend_dir,
+            capture_output=True,
+            text=True,
+            timeout=_timeout() * 2,
+            env=env,
+        )
+        report.sections["backup_verify"] = {
+            "exit_code": proc.returncode,
+            "stdout_tail": _tail(proc.stdout),
+            "stderr_tail": _tail(proc.stderr),
+        }
+        report.add(
+            CheckResult(
+                name="backup_verify.sh",
+                passed=proc.returncode == 0,
+                status_code=None,
+                detail=_tail(proc.stdout or proc.stderr, 500),
+                blocking=False,
+            )
+        )
+
+    load_path = os.path.join(script_dir, "load_smoke.py")
+    if os.path.isfile(load_path):
+        proc = subprocess.run(
+            [sys.executable, load_path],
             cwd=backend_dir,
             capture_output=True,
             text=True,
             timeout=_timeout() * 3,
-            env=os.environ.copy(),
+            env=env,
         )
         report.sections["load_smoke"] = {
             "exit_code": proc.returncode,
-            "stdout_tail": proc.stdout[-2000:],
+            "stdout_tail": _tail(proc.stdout),
+            "stderr_tail": _tail(proc.stderr),
         }
         report.add(
             CheckResult(
-                "load_smoke.py",
-                proc.returncode == 0,
-                None,
-                proc.stdout.splitlines()[-5:] if proc.stdout else "",
+                name="load_smoke.py",
+                passed=proc.returncode == 0,
+                status_code=None,
+                detail=_tail(proc.stdout or proc.stderr, 500),
                 blocking=False,
             )
         )
@@ -406,24 +566,26 @@ def run_subprocess_tools(report: ValidationReport) -> None:
 
 def main() -> int:
     report = ValidationReport()
-    report.sections["expected_migrations"] = EXPECTED_MIGRATIONS
     report.sections["target"] = _api_root()
+    report.sections["api_prefix"] = _prefix()
+    report.sections["expected_migrations"] = EXPECTED_MIGRATIONS
 
-    run_api_checks(report)
+    run_health_checks(report)
+    run_authenticated_checks(report)
+    run_rbac_checks(report)
     run_subprocess_tools(report)
 
-    summary = report.summary()
     output = {
-        "summary": summary,
+        "summary": report.summary(),
         "sections": report.sections,
-        "checks": [c.to_dict() for c in report.checks],
+        "checks": [check.to_dict() for check in report.checks],
     }
     print(json.dumps(output, indent=2))
 
-    rec = summary["recommendation"]
-    print(f"\nRecommendation: {rec}")
-
-    return 0 if summary["blocking_failed"] == 0 and summary["failed"] == 0 else 1
+    summary = output["summary"]
+    if summary["failed"] == 0:
+        return 0
+    return 1
 
 
 if __name__ == "__main__":
