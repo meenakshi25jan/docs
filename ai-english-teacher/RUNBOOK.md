@@ -588,7 +588,7 @@ Infra fixes on `cursor/cheapest-cloud-deploy-d164`. Voice-first features on `cur
 ### Before go-live
 
 - [ ] Neon database created with `pgvector` extension
-- [ ] All 5 migrations applied (`001`–`005`)
+- [ ] All migrations applied (`001`–`007`)
 - [ ] `DATABASE_URL` set on Render API (with `?sslmode=require`)
 - [ ] `JWT_SECRET_KEY` set (random, not default)
 - [ ] `CORS_ORIGINS` includes your frontend URL
@@ -1818,6 +1818,107 @@ psql "$DATABASE_URL" -f database/migrations/007_security_rls_hardening.sql
 
 ---
 
+## 26. Production Readiness v1
+
+**Branch:** `cursor/production-readiness-v1-f37f`  
+**Scope:** Deployment verification tooling only — no new product features.
+
+### Purpose
+
+Operational gate for staging/production: automated smoke tests, migration verification, environment checks, readiness APIs, backup/restore guidance, and rollback procedures.
+
+### Production APIs (admin only, read-only)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/production/readiness` | Aggregate deployment readiness |
+| `GET /api/v1/production/migrations` | `schema_migrations` vs expected 001–007 |
+| `GET /api/v1/production/security` | Security posture snapshot |
+| `GET /api/v1/production/environment` | Env config status (no secrets exposed) |
+
+### Automated smoke script
+
+```bash
+cd ai-english-teacher/backend
+export API_BASE_URL=https://ai-english-teacher-api.onrender.com
+export ADMIN_TOKEN=your_admin_jwt
+# optional: STUDENT_TOKEN for RBAC negative checks
+python3 scripts/production_smoke_test.py
+```
+
+Checks: `/health`, `/health/auth`, `/health/ai`, `/operations/health`, `/security/summary`, `/production/readiness`, `/analytics/overview`, `/governance/summary`.
+
+### Deployment checklist
+
+#### Pre-deploy
+
+- [ ] Migrations 001–007 applied on Neon (`python3 scripts/migrate.py`)
+- [ ] `JWT_SECRET_KEY` set (not default)
+- [ ] `DATABASE_URL` with `?sslmode=require`
+- [ ] `CORS_ORIGINS` includes frontend URL
+- [ ] AI keys or `AI_PROVIDER=mock` for staging
+- [ ] Run `python3 scripts/production_smoke_test.py` after staging deploy
+
+#### Deploy
+
+- [ ] Merge phase stack to target branch (`main` or staging branch)
+- [ ] Render API + Web services deployed
+- [ ] Understand `SKIP_MIGRATIONS=true` (manual migrate required)
+
+#### Post-deploy
+
+- [ ] `/health` healthy
+- [ ] `/api/v1/production/readiness` → `passed: true` (admin token)
+- [ ] `/api/v1/production/migrations` → no `missing`
+- [ ] Teacher + admin dashboards load
+- [ ] Security IDOR smoke (student → other learner → 404)
+
+#### Rollback
+
+1. Render Dashboard → Service → rollback to previous deploy
+2. Database migrations are forward-only — no automatic SQL rollback
+3. Bad migration: restore Neon branch/backup then redeploy previous API build
+
+### Migration verification
+
+```bash
+DATABASE_URL="..." python3 scripts/migrate.py
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  $API/api/v1/production/migrations
+```
+
+### Backup & restore (Neon)
+
+**Backup:** Neon branch snapshot before major migration; optional `pg_dump`; paid tier PITR.
+
+**Restore:** Neon branch restore or PITR → update `DATABASE_URL`; or `psql < backup.sql` on a test branch first.
+
+### Incident response (short)
+
+1. Check `/health` and `/operations/health`
+2. Render logs + Neon connectivity
+3. Deploy issue → rollback Render
+4. Data issue → Neon branch restore
+5. Document and post-mortem
+
+### Staging approval flow
+
+1. Apply migrations on staging Neon
+2. Deploy staging Render
+3. `production_smoke_test.py` → all PASS
+4. `/production/readiness` → `passed: true`
+5. Manual product smoke
+6. Approve production promote
+
+### Known limitations
+
+- No load testing in v1
+- No external alerting
+- Smoke script needs admin JWT
+- `knowledge_chunks` RLS deferred
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1836,4 +1937,4 @@ psql "$DATABASE_URL" -f database/migrations/007_security_rls_hardening.sql
 
 ---
 
-*Last updated: Security Hardening & RLS v1 · branch `cursor/security-hardening-v1-f37f` · stack: Render + Neon + Next.js proxy*
+*Last updated: Production Readiness v1 · branch `cursor/production-readiness-v1-f37f` · stack: Render + Neon + Next.js proxy*
