@@ -88,6 +88,23 @@ export default function StudentDashboard() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [progressChart, setProgressChart] = useState<Array<{ date: string; score: number }>>([]);
+  const [insights, setInsights] = useState<Array<{
+    type: string;
+    severity: string;
+    title: string;
+    description: string;
+    recommended_action?: string | null;
+  }>>([]);
+  const [governanceQuality, setGovernanceQuality] = useState<{
+    avg_overall_score?: number;
+    evaluation_count?: number;
+  } | null>(null);
+  const [curriculumActivity, setCurriculumActivity] = useState<{
+    lessons_completed_30d?: number;
+    revision_pending?: number;
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +128,51 @@ export default function StudentDashboard() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    Promise.all([
+      api.analytics.progress().catch(() => null),
+      api.analytics.insights().catch(() => null),
+      api.analytics.governance().catch(() => null),
+      api.analytics.curriculum().catch(() => null),
+    ])
+      .then(([progressData, insightsData, govData, currData]) => {
+        if (cancelled) return;
+        if (progressData && typeof progressData === 'object') {
+          const trends = (progressData as { skill_trends?: Array<{ skill: string; points: Array<{ timestamp: string; value: number }> }> }).skill_trends;
+          const grammar = trends?.find((t) => t.skill === 'grammar');
+          if (grammar?.points?.length) {
+            setProgressChart(
+              grammar.points.map((p) => ({
+                date: new Date(p.timestamp).toLocaleDateString(),
+                score: p.value,
+              })),
+            );
+          }
+        }
+        if (insightsData && typeof insightsData === 'object' && 'insights' in insightsData) {
+          setInsights((insightsData as { insights: typeof insights }).insights || []);
+        }
+        if (govData && typeof govData === 'object' && (govData as { has_data?: boolean }).has_data) {
+          setGovernanceQuality({
+            avg_overall_score: (govData as { avg_overall_score?: number }).avg_overall_score,
+            evaluation_count: (govData as { evaluation_count?: number }).evaluation_count,
+          });
+        }
+        if (currData && typeof currData === 'object' && (currData as { has_data?: boolean }).has_data) {
+          setCurriculumActivity({
+            lessons_completed_30d: (currData as { lessons_completed_30d?: number }).lessons_completed_30d,
+            revision_pending: (currData as { revision_pending?: number }).revision_pending,
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
       });
     return () => { cancelled = true; };
   }, []);
@@ -225,6 +287,77 @@ export default function StudentDashboard() {
                 Confidence score: <span className="font-semibold text-gray-900">{Math.round(profile.confidence_score * 100)}%</span>
                 {summary.latest_progress?.snapshot_at && (
                   <span className="ml-4">Last updated: {new Date(summary.latest_progress.snapshot_at).toLocaleDateString()}</span>
+                )}
+              </div>
+            )}
+
+            {/* Analytics insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className="lg:col-span-2 bg-white rounded-xl p-6 border shadow-sm">
+                <h3 className="font-semibold mb-4">Grammar Progress Trend</h3>
+                {analyticsLoading ? (
+                  <p className="text-gray-500 text-sm">Loading analytics…</p>
+                ) : progressChart.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={progressChart}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2} dot />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-500 text-sm">Complete lessons or assessments to see progress trends.</p>
+                )}
+              </div>
+              <div className="bg-white rounded-xl p-6 border shadow-sm">
+                <h3 className="font-semibold mb-4">Learning Insights</h3>
+                {analyticsLoading ? (
+                  <p className="text-gray-500 text-sm">Loading insights…</p>
+                ) : insights.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No insights yet — keep practicing to unlock personalized tips.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {insights.slice(0, 5).map((item, i) => (
+                      <li key={i} className="text-sm border-b pb-2 last:border-0">
+                        <p className="font-medium text-gray-900">{item.title}</p>
+                        <p className="text-gray-600 mt-1">{item.description}</p>
+                        {item.recommended_action && (
+                          <p className="text-xs text-primary mt-1">{item.recommended_action}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {(governanceQuality || curriculumActivity) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                {governanceQuality && governanceQuality.avg_overall_score != null && (
+                  <div className="bg-white rounded-xl border p-5 shadow-sm">
+                    <p className="text-sm text-gray-500">Teaching quality (governance)</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {Math.round(governanceQuality.avg_overall_score * 100)}%
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Based on {governanceQuality.evaluation_count ?? 0} evaluated turns
+                    </p>
+                  </div>
+                )}
+                {curriculumActivity && (
+                  <div className="bg-white rounded-xl border p-5 shadow-sm">
+                    <p className="text-sm text-gray-500">Curriculum activity (30d)</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {curriculumActivity.lessons_completed_30d ?? 0} lessons
+                    </p>
+                    {(curriculumActivity.revision_pending ?? 0) > 0 && (
+                      <p className="text-xs text-amber-700 mt-1">
+                        {curriculumActivity.revision_pending} revision items pending
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
