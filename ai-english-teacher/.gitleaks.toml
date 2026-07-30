@@ -1,0 +1,14 @@
+title = "AI English Teacher gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and documentation examples"
+paths = [
+  '''backend/tests/''',
+  '''backend/scripts/staging_validation.py''',
+  '''docs/''',
+  '''deploy/''',
+  '''\.env\.example''',
+]
