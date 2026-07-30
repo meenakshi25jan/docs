@@ -8,7 +8,7 @@ services:
     runtime: python
     region: oregon
     plan: free
-    branch: main
+    branch: cursor/reliability-observability-v1-f37f
     rootDir: ai-english-teacher/backend
     buildCommand: |
       pip install -r requirements-render.txt
@@ -60,7 +60,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    branch: main
+    branch: cursor/reliability-observability-v1-f37f
     rootDir: ai-english-teacher/frontend
     buildCommand: npm ci && npm run build
     startCommand: npm start

@@ -102,7 +102,10 @@ def _recommendation(blocking: list[CheckResult], failed: list[CheckResult]) -> s
 
 
 def _api_root() -> str:
-    return os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
+    return os.environ.get(
+        "API_BASE_URL",
+        "https://ai-english-teacher-api.onrender.com",
+    ).rstrip("/")
 
 
 def _prefix() -> str:
@@ -132,6 +135,10 @@ def _http_get(
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         return exc.code, body, dict(exc.headers)
+    except urllib.error.URLError as exc:
+        return 0, f"{type(exc).__name__}: {exc.reason}", {}
+    except Exception as exc:
+        return 0, f"{type(exc).__name__}: {exc}", {}
 
 
 def _api_path(path: str) -> str:
