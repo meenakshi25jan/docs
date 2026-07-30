@@ -9,8 +9,9 @@
 | API docs | https://ai-english-teacher-api.onrender.com/docs |
 | Health | https://ai-english-teacher-api.onrender.com/health |
 
-**Deploy branch:** `cursor/cheapest-cloud-deploy-d164`  
-**Repo:** `meenakshi25jan/docs` → folder `ai-english-teacher/`
+**Deploy branch:** `main` (recommended) · voice-first: `cursor/voice-first-redesign-f37f` · infra baseline: `cursor/cheapest-cloud-deploy-d164`  
+**Repo:** `meenakshi25jan/docs` → folder `ai-english-teacher/`  
+**Platform mode:** Voice-first conversational teacher (PRD v2) — unified voice turns, teaching personas, lesson reports
 
 ---
 
@@ -30,7 +31,10 @@
 10. [Production Checklist](#10-production-checklist)
 11. [Cost Tiers](#11-cost-tiers)
 12. [App Routes & API Reference](#12-app-routes--api-reference)
-13. [Mobile App (Google Play)](#16-mobile-app-google-play)
+13. [Microsoft Copilot / Azure OpenAI](#13-microsoft-copilot--azure-openai-recommended-for-cloud)
+14. [Ollama LLM Setup](#14-ollama-llm-setup-local-only)
+15. [Voice-First Practice (PRD v2)](#15-voice-first-practice-prd-v2)
+16. [Mobile App (Google Play)](#16-mobile-app-google-play)
 
 ---
 
@@ -82,7 +86,9 @@
 | bcrypt | 4.2.1 | Password hashing |
 | python-jose | 3.3.0 | JWT tokens |
 | pydantic-settings | 2.7.0 | Config from env vars |
-| openai | 1.58.1 | AI integration |
+| openai | 1.58.1 | AI integration + Whisper STT |
+| langgraph | latest | Conversation orchestration pipeline |
+| langchain-core | latest | Agent framework |
 
 **Render free tier** uses slim `requirements-render.txt` (same core, no Redis/prometheus).
 
@@ -101,7 +107,7 @@
 |-------------|---------|
 | PostgreSQL | 16+ (Neon 18 works) |
 | Extension | `pgvector` — run `CREATE EXTENSION IF NOT EXISTS vector;` |
-| Migrations | 3 SQL files in `database/migrations/` |
+| Migrations | 5 SQL files in `database/migrations/` |
 
 ---
 
@@ -121,10 +127,16 @@
 |----------|---------|-------|
 | `SKIP_MIGRATIONS` | `true` on Render | Set `false` to auto-run migrations on start |
 | `DEBUG` | `false` | Enable API debug mode |
-| `OPENAI_API_KEY` | empty | Enables real AI |
-| `AZURE_OPENAI_ENDPOINT` | empty | Azure OpenAI endpoint |
+| `AI_PROVIDER` | `auto` | `copilot`, `openai`, `ollama`, or `mock` |
+| `OPENAI_API_KEY` | empty | Enables real AI scoring & conversation |
+| `OPENAI_BASE_URL` | empty | Groq: `https://api.groq.com/openai/v1` |
+| `WHISPER_MODEL` | auto | Server STT: `whisper-large-v3-turbo` (Groq) or `whisper-1` |
+| `AZURE_OPENAI_ENDPOINT` | empty | Azure OpenAI / Copilot endpoint |
 | `AZURE_OPENAI_API_KEY` | empty | Azure OpenAI key |
-| `REDIS_URL` | `redis://localhost:6379/0` | Optional; not needed for MVP |
+| `AZURE_OPENAI_DEPLOYMENT` | `gpt-4o-mini` | Chat deployment name |
+| `AZURE_SPEECH_KEY` | empty | Future phoneme pronunciation (not wired yet) |
+| `AZURE_SPEECH_REGION` | `eastus` | Azure Speech region |
+| `REDIS_URL` | `redis://localhost:6379/0` | Optional session memory; in-memory fallback if empty |
 
 ### Frontend — required
 
@@ -201,7 +213,7 @@ cd backend
 python3 -m pytest tests/ -q
 ```
 
-Expected: `28 passed`
+Expected: `57 passed` (includes voice agents, orchestration, teaching decision tests)
 
 ---
 
@@ -264,6 +276,8 @@ Expected output:
   apply 001_initial_schema.sql
   apply 002_pgvector.sql
   apply 003_auth_rls.sql
+  apply 004_fix_rls_policies.sql
+  apply 005_knowledge_and_voice.sql
 Migrations complete
 ```
 
@@ -275,7 +289,7 @@ Migrations complete
 2. Connect repo `meenakshi25jan/docs`
 3. Blueprint file: `ai-english-teacher/render-backend.yaml` (Docker) or `render.yaml`
 4. Set `DATABASE_URL` when prompted
-5. Branch: `cursor/cheapest-cloud-deploy-d164`
+5. Branch: `main` (or `cursor/voice-first-redesign-f37f` for latest voice-first features)
 
 **Option B — Manual Web Service**
 
@@ -285,7 +299,7 @@ Migrations complete
 | Root Directory | `ai-english-teacher` |
 | Runtime | **Docker** |
 | Dockerfile | `backend/Dockerfile` |
-| Branch | `cursor/cheapest-cloud-deploy-d164` |
+| Branch | `main` |
 | Health Check Path | `/health` |
 
 **API environment variables:**
@@ -306,14 +320,17 @@ Migrations complete
 | Runtime | **Node** (not Docker) |
 | Build Command | `npm install && npm run build` |
 | Start Command | `npm start` |
-| Branch | `cursor/cheapest-cloud-deploy-d164` |
+| Branch | `main` |
 
 **Frontend environment:**
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_API_URL` | `https://ai-english-teacher-api.onrender.com/api/v1` |
+| `NEXT_PUBLIC_API_URL` | `/api/v1` |
+| `API_PROXY_URL` | `https://ai-english-teacher-api.onrender.com` |
 | `NODE_VERSION` | `20` |
+
+> **Important:** Use `/api/v1` (same-origin proxy), not the full API URL. The Next.js rewrite in `next.config.js` proxies `/api/v1/*` → `API_PROXY_URL/api/v1/*`. This avoids CORS and "Cannot reach the API" errors.
 
 ### Step 5 — Manual deploy (after every code push)
 
@@ -326,7 +343,8 @@ Migrations complete
 | Setting | Value |
 |---------|-------|
 | Root Directory | `ai-english-teacher/frontend` |
-| `NEXT_PUBLIC_API_URL` | `https://ai-english-teacher-api.onrender.com/api/v1` |
+| `NEXT_PUBLIC_API_URL` | `/api/v1` |
+| `API_PROXY_URL` | `https://ai-english-teacher-api.onrender.com` |
 
 Update `CORS_ORIGINS` on API to include your Vercel URL.
 
@@ -340,6 +358,7 @@ Update `CORS_ORIGINS` on API to include your Vercel URL.
 | `002_pgvector.sql` | Vector extension tables |
 | `003_auth_rls.sql` | Login email lookup policy |
 | `004_fix_rls_policies.sql` | Fix RLS uuid cast errors on register |
+| `005_knowledge_and_voice.sql` | RAG knowledge chunks + `voice_analyses` table |
 
 **Run all migrations:**
 ```bash
@@ -400,16 +419,37 @@ Expected: `HTTP 201` with `access_token` in response (or `409` if email exists)
 | `/` | Landing page |
 | `/register` | Registration form |
 | `/login` | Login form |
-| `/conversation` | Scenario picker |
+| `/conversation` | Voice-first lesson (persona + scenario picker) |
+| `/grammar-class` | Grade 5–12 grammar voice practice |
 | `/assessment` | Assessment page |
 | `/dashboard/student` | Student dashboard |
+
+### Voice API smoke tests (auth required)
+
+After login, test with a Bearer token:
+
+```bash
+# List teacher personas and scenarios
+curl https://ai-english-teacher-api.onrender.com/api/v1/voice/personas
+
+# Unified voice turn (transcript-only smoke test)
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/voice/turn \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transcript":"I went to the market yesterday.","scenario":"everyday","persona_id":"conversation_partner"}'
+```
+
+Expected: JSON with `response`, `voice_scores`, `teaching_mode`, and `estimates`.
 
 ### End-to-end user flow
 
 1. Open `/register` → create account
 2. Redirected to `/dashboard/student`
-3. Open `/conversation` → pick scenario → Start
-4. Open `/assessment` → start placement test
+3. Open `/conversation` → pick **teacher persona** and **scenario** → **Start Voice Lesson**
+4. Tap **Mic** → speak → teacher responds with voice (auto-play) + optional corrections
+5. Click **End lesson & report** → CEFR/IELTS estimates, recurring mistakes, recommendations
+6. Open `/assessment` → start placement test (text-based)
+7. Open `/grammar-class` → grade-level grammar with voice practice
 
 ---
 
@@ -433,7 +473,7 @@ Expected: `HTTP 201` with `access_token` in response (or `409` if email exists)
 | Root Directory | `ai-english-teacher` (Docker) or `ai-english-teacher/backend` (Python) |
 | Build Command | `pip install -r requirements-render.txt` (Python) or use Dockerfile |
 | Start Command | `python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Branch | `cursor/cheapest-cloud-deploy-d164` |
+| Branch | `main` |
 
 **Environment:** `DATABASE_URL` must be full `postgresql://...?sslmode=require`
 
@@ -473,7 +513,10 @@ INFO:     Application startup complete.
 | Error | Cause | Fix |
 |-------|-------|-----|
 | **404 on `/grammar-class`** | Web deploy failed (Docker/ESLint) | Redeploy **ai-english-teacher-web** from `main`; check Events for build errors |
-| **Only `/` and `/dashboard/student` work** | Old build before pages were added | Redeploy frontend; build log should list all 8 routes |
+| **Only `/` and `/dashboard/student` work** | Old build before pages were added | Redeploy frontend; build log should list all 9 routes |
+| **Voice turn returns 401** | Not logged in or expired token | Login again; token lasts 24h |
+| **Voice turn returns 400 "No transcript"** | Empty mic input | Speak clearly; use Chrome/Edge; check mic permissions |
+| **Lesson report empty** | No voice turns in conversation | Complete at least one mic turn before **End lesson & report** |
 
 ### Auth errors
 
@@ -493,7 +536,7 @@ INFO:     Application startup complete.
 | **`ModuleNotFoundError`** | Wrong requirements file | Use `requirements-render.txt` on free tier |
 | **Next.js monorepo warning** | Multiple lockfiles | Fixed via `outputFileTracingRoot` in `next.config.js` |
 | **Frontend build: `next: not found`** | Missing `npm install` | Build command must be `npm install && npm run build` |
-| **Vercel can't find repo** | Wrong root directory | Set root to `ai-english-teacher/frontend`, branch `cursor/cheapest-cloud-deploy-d164` |
+| **Vercel can't find repo** | Wrong root directory | Set root to `ai-english-teacher/frontend`, branch `main` |
 
 ### Docker / Local
 
@@ -507,7 +550,7 @@ INFO:     Application startup complete.
 
 ## 9. Bugs Fixed (Changelog)
 
-All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
+Infra fixes on `cursor/cheapest-cloud-deploy-d164`. Voice-first features on `cursor/voice-first-redesign-f37f` (PR #26).
 
 | # | Bug | Symptom | Fix | Commit area |
 |---|-----|---------|-----|-------------|
@@ -524,6 +567,9 @@ All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
 | 11 | `IndentationError` in CORS validator | API won't start | Fixed indentation | `config.py` |
 | 13 | Frontend API URL baked as localhost | "Cannot reach the API" | Same-origin `/api/v1` proxy via Next.js rewrites | `next.config.js`, `api.ts` |
 | 15 | asyncpg rejects `sslmode` URL param | `/health/register` TypeError | Strip sslmode, pass `ssl=True` in connect_args | `db_url.py` |
+| 16 | Voice analyze + chat were separate calls | Slow, disconnected UX | Unified `voice-turn` pipeline | `orchestration/voice/voice_turn.py` |
+| 17 | No teaching mode selection | Always inline correction | Teaching decision engine (immediate/delayed/Socratic) | `teaching_decision.py` |
+| 18 | Render frontend `NEXT_PUBLIC_API_URL` wrong | CORS / cannot reach API | Use `/api/v1` + `API_PROXY_URL` proxy | `next.config.js` |
 
 ---
 
@@ -532,12 +578,15 @@ All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
 ### Before go-live
 
 - [ ] Neon database created with `pgvector` extension
-- [ ] All 3 migrations applied (`001`, `002`, `003`)
+- [ ] All 5 migrations applied (`001`–`005`)
 - [ ] `DATABASE_URL` set on Render API (with `?sslmode=require`)
 - [ ] `JWT_SECRET_KEY` set (random, not default)
 - [ ] `CORS_ORIGINS` includes your frontend URL
 - [ ] `NEXT_PUBLIC_API_URL` set on frontend service
-- [ ] Both Render services deployed from `cursor/cheapest-cloud-deploy-d164`
+- [ ] Both Render services deployed from `main` (or voice-first branch until merged)
+- [ ] Frontend uses `NEXT_PUBLIC_API_URL=/api/v1` and `API_PROXY_URL` set to API host
+- [ ] `AI_PROVIDER` + API keys set for real conversation (not mock mode)
+- [ ] Voice lesson flow tested: persona → mic → teacher reply → lesson report
 - [ ] `/health` returns healthy
 - [ ] `/health/auth` returns `password_hashing: ok`
 - [ ] Register + login work end-to-end
@@ -580,7 +629,8 @@ All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
 | `/register` | Create account |
 | `/login` | Sign in |
 | `/assessment` | Placement / skill assessment |
-| `/conversation` | AI role-play practice |
+| `/conversation` | Voice-first AI lesson (personas, scenarios, lesson report) |
+| `/grammar-class` | School grammar lessons with voice practice |
 | `/dashboard/student` | Student progress dashboard |
 | `/dashboard/teacher` | Teacher class view |
 | `/dashboard/admin` | Admin system view |
@@ -595,14 +645,37 @@ All fixes are on branch `cursor/cheapest-cloud-deploy-d164`.
 | POST | `/assessments` | Yes | Start assessment |
 | POST | `/assessments/{id}/submit` | Yes | Submit answers |
 | GET | `/assessments/{id}/results` | Yes | Get results |
-| POST | `/conversations` | Yes | Start role-play |
-| POST | `/conversations/{id}/messages` | Yes | Send message |
+| POST | `/conversations` | Yes | Start lesson (`persona_id` optional) |
+| POST | `/conversations/{id}/messages` | Yes | Send text message |
+| POST | `/conversations/{id}/voice-turn` | Yes | **Unified voice turn** (STT → coaches → teacher) |
+| GET | `/conversations/{id}/lesson-report` | Yes | Lesson completion report |
+| GET | `/voice/personas` | No* | Teacher personas + scenarios list |
+| POST | `/voice/analyze` | Yes | Analyze speech only (no teacher reply) |
+| POST | `/voice/turn` | Yes | Standalone unified voice turn |
+| GET | `/grammar/grades` | Yes | Grammar class grade list |
+| GET | `/grammar/lessons` | Yes | Lessons for a grade |
+| POST | `/grammar/practice` | Yes | Grammar voice practice turn |
 | POST | `/writing/submit` | Yes | Submit writing |
 | GET | `/dashboard/student` | Yes | Student dashboard data |
 | GET | `/dashboard/teacher` | Yes | Teacher dashboard data |
 | GET | `/dashboard/admin` | Yes | Admin dashboard data |
 
+\* `/voice/personas` is public; voice turn endpoints require auth.
+
 Full interactive docs: https://ai-english-teacher-api.onrender.com/docs
+
+### Voice-first architecture (stack alignment)
+
+```
+Browser mic (Web Speech API) → POST /conversations/{id}/voice-turn
+  → Server Whisper STT (optional, if audio_base64 sent)
+  → Coach agents (fluency, pronunciation, grammar, vocabulary)
+  → Teaching Decision Engine (immediate | delayed | Socratic)
+  → LangGraph Teacher Orchestrator (memory + RAG + persona)
+  → Teacher response → Browser TTS (speechSynthesis)
+```
+
+See `docs/13-VOICE_FIRST_PRD_V2.md` for full product spec.
 
 ---
 
@@ -702,18 +775,40 @@ Expected: `{"provider":"ollama","model":"llama3.2","configured":true}`
 
 ---
 
-## 15. Voice Practice
+## 15. Voice-First Practice (PRD v2)
 
-Voice is built into the **Conversation** page using the browser Web Speech API (no extra API keys).
+The platform centers on **continuous spoken conversation**, not text chat. The `/conversation` page is the primary voice lesson experience.
+
+### Stack alignment (this app on Render + Neon)
+
+| Layer | Technology | Where |
+|-------|------------|-------|
+| Client STT | Web Speech API | `frontend/src/hooks/useVoice.ts` |
+| Client TTS | `speechSynthesis` | Same hook |
+| API proxy | Next.js rewrites | `frontend/next.config.js` → Render API |
+| Server STT | OpenAI-compatible Whisper | Groq `whisper-large-v3-turbo` or OpenAI `whisper-1` |
+| Orchestration | LangGraph pipeline | `backend/app/orchestration/graph.py` |
+| Voice coaches | Fluency, pronunciation, grammar, vocab | `backend/app/orchestration/voice/` |
+| Teaching modes | Immediate, delayed, Socratic | `teaching_decision.py` |
+| Personas | 7 teacher styles | `personas.py` — IELTS, PTE, TOEFL, Business, etc. |
+| Memory | PostgreSQL + pgvector | Neon — `error_tracking`, `voice_analyses` |
+| AI LLM | Azure Copilot / OpenAI / Groq / Ollama | `AI_PROVIDER` env var |
 
 ### Features (implemented)
 
 | Feature | How |
 |---------|-----|
-| **Speech-to-text** | 🎤 mic button on `/conversation` |
+| **Teacher persona picker** | `/conversation` — Friendly Beginner, IELTS Examiner, PTE Coach, etc. |
+| **15+ scenarios** | Job interview, visa interview, restaurant, debate, negotiation, … |
+| **Unified voice turn** | Mic → `POST /conversations/{id}/voice-turn` (analyze + teach in one call) |
+| **Voice-first mode** | Toggle on conversation page (default on) |
+| **Teaching modes** | Immediate, delayed batch, or Socratic self-correction |
+| **Per-turn scores** | Fluency, pronunciation, grammar, vocabulary on each utterance |
+| **Lesson report** | **End lesson & report** → CEFR/IELTS estimates, mistakes, next steps |
+| **Grammar class voice** | `/grammar-class` — grades 5–12 with `POST /grammar/practice` |
+| **Server Whisper STT** | Send `audio_base64` from mobile or future web recorder |
 | **Text-to-speech** | Auto-plays AI replies (toggle "Auto-play voice") |
-| **Replay** | "🔊 Play again" on each AI message |
-| **Grammar tips** | Shown below AI messages when LLM returns corrections |
+| **Replay** | Play again on each teacher message |
 
 ### Browser support
 
@@ -725,14 +820,26 @@ Voice is built into the **Conversation** page using the browser Web Speech API (
 
 Use **Chrome or Edge** for full voice practice.
 
+### Optional env for server-side STT (Groq free tier)
+
+| Key | Value |
+|-----|-------|
+| `AI_PROVIDER` | `openai` |
+| `OPENAI_API_KEY` | Groq API key |
+| `OPENAI_BASE_URL` | `https://api.groq.com/openai/v1` |
+| `WHISPER_MODEL` | `whisper-large-v3-turbo` |
+
+Mobile app sends `audio_base64` to `/voice/analyze` and `/grammar/practice` — same backend pipeline.
+
 ### Future improvements (not yet built)
 
 | Feature | Tool | Priority |
 |---------|------|----------|
-| Server-side Whisper STT | `faster-whisper` or Ollama whisper | P2 |
-| Pronunciation scoring | Azure Speech SDK | P3 |
-| Speaking assessment page | New `/speaking` route | P3 |
-| Record & replay audio | `MediaRecorder` + blob storage | P3 |
+| WebSocket streaming + VAD | Real-time continuous listening | P1 |
+| Azure Speech phoneme scoring | `AZURE_SPEECH_KEY` (in deps, not wired) | P2 |
+| Server-side TTS | Azure / Polly for consistent teacher voice | P2 |
+| Dedicated `/speaking` page | Full speaking assessment UI | P3 |
+| Audio blob storage | `speaking_sessions` table + S3/Blob | P3 |
 
 ---
 
@@ -744,7 +851,8 @@ Android app in `mobile/` — built with **Expo React Native**.
 |---------|--------|
 | Login / Register | Secure token storage (Keychain) |
 | Dashboard | CEFR, IELTS, PTE, skill scores |
-| AI Practice | Role-play chat + text-to-speech |
+| AI Practice | Role-play + voice turn API |
+| Grammar | Voice grammar practice |
 | Assessment | Placement test |
 
 ### Development
@@ -778,12 +886,14 @@ Upload the `.aab` to [Google Play Console](https://play.google.com/console) ($25
 | Cheapest deploy guide | `deploy/cheapest/DEPLOY.md` |
 | Render troubleshooting | `deploy/cheapest/RENDER_FIX.md` |
 | Neon + Vercel setup | `deploy/cheapest/NEON_VERCEL.md` |
+| Voice-first PRD v2 | `docs/13-VOICE_FIRST_PRD_V2.md` |
 | System architecture | `docs/02-SYSTEM_ARCHITECTURE.md` |
 | API design | `docs/04-API_DESIGN.md` |
 | Production readiness | `docs/12-PRODUCTION_READINESS.md` |
+| Copilot / Azure OpenAI | `deploy/cheapest/COPILOT_AZURE.md` |
 | Mobile app + Google Play | `mobile/GOOGLE_PLAY.md` |
 | Oracle Cloud VM | `deploy/oracle-cloud/VM_SETUP.md` |
 
 ---
 
-*Last updated: branch `cursor/cheapest-cloud-deploy-d164`*
+*Last updated: voice-first PRD v2 · branch `cursor/voice-first-redesign-f37f` · stack: Render + Neon + Next.js proxy*

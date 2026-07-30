@@ -108,6 +108,7 @@ After each session:
 
 ## Related Documentation
 
+- `RUNBOOK.md` — **complete deploy, smoke tests, error catalog** (Render + Neon stack)
 - `docs/01-PRODUCT_REQUIREMENTS.md` — original PRD
 - `docs/02-SYSTEM_ARCHITECTURE.md` — system architecture
 - `docs/07-AI_AGENT_DESIGN.md` — agent design
