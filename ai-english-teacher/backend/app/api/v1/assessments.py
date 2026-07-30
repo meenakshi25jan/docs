@@ -19,6 +19,7 @@ from app.schemas import (
     SkillResult,
 )
 from app.scoring.engine import aggregate_scores, score_to_cefr, score_to_ielts, score_to_pte
+from app.services.progress_snapshot_service import record_from_assessment
 
 router = APIRouter(prefix="/assessments", tags=["Assessments"])
 
@@ -127,6 +128,14 @@ async def submit_assessment(
     learner.current_cefr = overall.cefr
     learner.ielts_estimate = overall.ielts
     learner.pte_estimate = overall.pte
+
+    await record_from_assessment(
+        db,
+        tenant_id=user.tenant_id,
+        learner_id=learner.id,
+        skill_scores=skill_score_map,
+        estimate=overall,
+    )
 
     return AssessmentResultResponse(
         assessment_id=assessment.id,

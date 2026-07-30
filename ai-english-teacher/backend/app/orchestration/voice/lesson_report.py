@@ -13,6 +13,7 @@ from app.agents import AGENT_REGISTRY
 from app.models.memory import VoiceAnalysis
 from app.scoring.engine import aggregate_scores
 from app.services.memory_store import get_recurring_mistakes
+from app.services.progress_snapshot_service import record_from_lesson_scores
 
 
 async def generate_lesson_report(
@@ -79,6 +80,23 @@ async def generate_lesson_report(
     ))
     ai_report = agent_out.data
 
+    scores = {
+        "overall_speaking": avg_overall,
+        "fluency": avg_fluency,
+        "pronunciation": avg_pronunciation,
+        "grammar": avg_grammar,
+        "vocabulary": avg_vocab,
+        "communication_effectiveness": round((avg_overall + avg_fluency) / 2, 1),
+    }
+
+    await record_from_lesson_scores(
+        db,
+        tenant_id=tenant_id,
+        learner_id=learner_id,
+        scores=scores,
+        estimate=estimate,
+    )
+
     return {
         "lesson_summary": {
             "turn_count": len(analyses),
@@ -86,14 +104,7 @@ async def generate_lesson_report(
             "persona_id": persona_id,
             "conversation_id": str(conversation_id) if conversation_id else None,
         },
-        "scores": {
-            "overall_speaking": avg_overall,
-            "fluency": avg_fluency,
-            "pronunciation": avg_pronunciation,
-            "grammar": avg_grammar,
-            "vocabulary": avg_vocab,
-            "communication_effectiveness": round((avg_overall + avg_fluency) / 2, 1),
-        },
+        "scores": scores,
         "estimates": {
             "cefr_level": estimate.cefr,
             "ielts_speaking_estimate": estimate.ielts,

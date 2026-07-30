@@ -127,7 +127,8 @@
 |----------|---------|-------|
 | `SKIP_MIGRATIONS` | `true` on Render | Set `false` to auto-run migrations on start |
 | `DEBUG` | `false` | Enable API debug mode |
-| `AI_PROVIDER` | `auto` | `copilot`, `openai`, `ollama`, or `mock` |
+| `AI_PROVIDER` | `auto` | `copilot`, `openai`, `groq`, `ollama`, or `mock` |
+| `COGNITIVE_ORCHESTRATION_ENABLED` | `true` | Set `false` to route turns through LangGraph only (cognitive layer disabled) |
 | `OPENAI_API_KEY` | empty | Enables real AI scoring & conversation |
 | `OPENAI_BASE_URL` | empty | Groq: `https://api.groq.com/openai/v1` |
 | `WHISPER_MODEL` | auto | Server STT: `whisper-large-v3-turbo` (Groq) or `whisper-1` |
@@ -213,7 +214,7 @@ cd backend
 python3 -m pytest tests/ -q
 ```
 
-Expected: `57 passed` (includes voice agents, orchestration, teaching decision tests)
+Expected: `105 passed` (unit + API integration tests; no production DB or real AI keys required)
 
 ---
 
@@ -289,7 +290,9 @@ Migrations complete
 2. Connect repo `meenakshi25jan/docs`
 3. Blueprint file: `ai-english-teacher/render-backend.yaml` (Docker) or `render.yaml`
 4. Set `DATABASE_URL` when prompted
-5. Branch: `main` (or `cursor/voice-first-redesign-f37f` for latest voice-first features)
+5. Branch: `main` (stable) or `cursor/voice-first-redesign-f37f` (voice-first PRD v2 + Phase 0 stabilization)
+
+> **Deploy branch alignment:** `render.yaml` and `render-backend.yaml` default to branch `main`. Feature work (voice-first, cognitive orchestration, Phase 0 fixes) lives on `cursor/voice-first-redesign-f37f`. To test those changes on Render before merging to `main`, set **Branch** to `cursor/voice-first-redesign-f37f` on both API and Web services (Dashboard → Service → Settings → Branch), then Manual Deploy. After merge to `main`, switch services back to `main` for production.
 
 **Option B — Manual Web Service**
 
@@ -299,7 +302,7 @@ Migrations complete
 | Root Directory | `ai-english-teacher` |
 | Runtime | **Docker** |
 | Dockerfile | `backend/Dockerfile` |
-| Branch | `main` |
+| Branch | `main` (or `cursor/voice-first-redesign-f37f` for voice-first preview) |
 | Health Check Path | `/health` |
 
 **API environment variables:**
@@ -320,7 +323,7 @@ Migrations complete
 | Runtime | **Node** (not Docker) |
 | Build Command | `npm install && npm run build` |
 | Start Command | `npm start` |
-| Branch | `main` |
+| Branch | `main` (or `cursor/voice-first-redesign-f37f` for voice-first preview) |
 
 **Frontend environment:**
 
@@ -360,6 +363,10 @@ Update `CORS_ORIGINS` on API to include your Vercel URL.
 | `004_fix_rls_policies.sql` | Fix RLS uuid cast errors on register |
 | `005_knowledge_and_voice.sql` | RAG knowledge chunks + `voice_analyses` table |
 
+**Canonical migration path:** `database/migrations/` (used by Docker Compose init and `scripts/migrate.py`).
+
+> **Duplicate migration folder:** A copy also exists at `backend/migrations/`. Do **not** run both. Always use `database/migrations/` or `MIGRATIONS_DIR=../database/migrations` with `scripts/migrate.py`. The `backend/migrations/` copy is legacy and may drift — treat `database/migrations/` as source of truth.
+
 **Run all migrations:**
 ```bash
 cd ai-english-teacher/backend
@@ -385,7 +392,9 @@ Run these in order after every deploy.
 ```bash
 curl https://ai-english-teacher-api.onrender.com/health
 ```
-Expected: `{"status":"healthy","version":"1.0.0","database":"configured"}`
+Expected: `{"status":"healthy","version":"1.0.0","database":"reachable","database_latency_ms":12}` (or `"database":"not_configured"` locally without Postgres)
+
+If the database is down: `{"status":"degraded","version":"1.0.0","database":"unreachable"}`
 
 ### Password hashing (confirms bcrypt fix is live)
 
@@ -473,7 +482,7 @@ Expected: JSON with `response`, `voice_scores`, `teaching_mode`, and `estimates`
 | Root Directory | `ai-english-teacher` (Docker) or `ai-english-teacher/backend` (Python) |
 | Build Command | `pip install -r requirements-render.txt` (Python) or use Dockerfile |
 | Start Command | `python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Branch | `main` |
+| Branch | `main` (or `cursor/voice-first-redesign-f37f` for voice-first preview) |
 
 **Environment:** `DATABASE_URL` must be full `postgresql://...?sslmode=require`
 
@@ -887,6 +896,7 @@ Upload the `.aab` to [Google Play Console](https://play.google.com/console) ($25
 | Render troubleshooting | `deploy/cheapest/RENDER_FIX.md` |
 | Neon + Vercel setup | `deploy/cheapest/NEON_VERCEL.md` |
 | Voice-first PRD v2 | `docs/13-VOICE_FIRST_PRD_V2.md` |
+| Cognitive Orchestration Layer | `docs/14-COGNITIVE_ORCHESTRATION_LAYER.md` |
 | System architecture | `docs/02-SYSTEM_ARCHITECTURE.md` |
 | API design | `docs/04-API_DESIGN.md` |
 | Production readiness | `docs/12-PRODUCTION_READINESS.md` |

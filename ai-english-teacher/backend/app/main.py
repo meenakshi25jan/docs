@@ -1,4 +1,3 @@
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -7,6 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
 from app.core.config import get_settings
+from app.services.health_service import probe_database, validate_production_jwt_secret
 from app.api.v1.auth import router as auth_router
 from app.api.v1.assessments import router as assessments_router
 from app.api.v1.conversations import router as conversations_router
@@ -24,6 +24,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_production_jwt_secret()
     yield
 
 
@@ -64,26 +65,18 @@ except ImportError:
 
 @app.get("/health")
 async def health():
-    env_db = os.environ.get("DATABASE_URL", "").strip()
-    settings_db = get_settings().DATABASE_URL.strip()
-
-    if not env_db and not settings_db:
-        db_status = "not_configured"
-    elif env_db.startswith("postgresql") or settings_db.startswith("postgresql"):
-        db_status = "configured"
-    else:
-        db_status = "invalid_format"
-
-    return {
-        "status": "healthy",
+    """Health check with live database connectivity probe."""
+    db_probe = await probe_database()
+    db_status = db_probe["database"]
+    overall = "healthy" if db_status in ("reachable", "not_configured") else "degraded"
+    body: dict = {
+        "status": overall,
         "version": settings.APP_VERSION,
         "database": db_status,
-        "hint": (
-            "Set DATABASE_URL in Render → Environment to full postgresql://..."
-            if db_status != "configured"
-            else "ready"
-        ),
     }
+    if db_probe.get("database_latency_ms") is not None:
+        body["database_latency_ms"] = db_probe["database_latency_ms"]
+    return body
 
 
 @app.get("/health/auth")
@@ -141,10 +134,11 @@ async def health_ai():
 async def unhandled_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, HTTPException):
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc), "type": type(exc).__name__},
-    )
+    if settings.DEBUG:
+        content = {"detail": str(exc), "type": type(exc).__name__}
+    else:
+        content = {"detail": "Internal server error"}
+    return JSONResponse(status_code=500, content=content)
 
 
 @app.get("/")

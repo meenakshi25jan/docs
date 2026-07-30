@@ -23,10 +23,10 @@ interface Message {
   voiceScore?: number;
 }
 
-interface VoiceReport {
-  fluency: number;
-  pronunciation: number;
-  overall_score: number;
+interface VoiceScores {
+  overall?: number;
+  fluency?: number;
+  pronunciation?: number;
 }
 
 export default function PracticeScreen() {
@@ -37,7 +37,7 @@ export default function PracticeScreen() {
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
-  const [lastVoiceReport, setLastVoiceReport] = useState<VoiceReport | null>(null);
+  const [lastVoiceScores, setLastVoiceScores] = useState<VoiceScores | null>(null);
   const { startRecording, stopRecording, isRecording } = useVoiceRecord();
 
   function speak(text: string) {
@@ -97,23 +97,40 @@ export default function PracticeScreen() {
       try {
         setLoading(true);
         const audio = await stopRecording();
-        if (!audio) return;
+        if (!audio || !conversationId) return;
 
-        const report = (await api.voice.analyze({
+        const turn = (await api.conversations.voiceTurn(conversationId, {
           audio_base64: audio.base64,
           audio_mime_type: 'audio/m4a',
           duration_seconds: audio.durationMs / 1000,
-          conversation_id: conversationId || undefined,
-        })) as VoiceReport & { transcript: string };
+        })) as {
+          transcript: string;
+          response: string;
+          corrections?: Message['corrections'];
+          voice_scores?: { overall?: number; fluency?: number; pronunciation?: number };
+        };
 
-        setLastVoiceReport({
-          fluency: report.fluency,
-          pronunciation: report.pronunciation,
-          overall_score: report.overall_score,
+        const voiceScore = turn.voice_scores?.overall;
+        setLastVoiceScores({
+          overall: turn.voice_scores?.overall,
+          fluency: turn.voice_scores?.fluency,
+          pronunciation: turn.voice_scores?.pronunciation,
         });
-        await sendMessage(report.transcript, report.overall_score);
+
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now().toString(), role: 'user', content: turn.transcript, voiceScore },
+        ]);
+        const assistant: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: turn.response,
+          corrections: turn.corrections,
+        };
+        setMessages((prev) => [...prev, assistant]);
+        if (autoSpeak) speak(assistant.content);
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Voice analysis failed');
+        alert(err instanceof Error ? err.message : 'Voice turn failed');
       } finally {
         setLoading(false);
       }
@@ -156,10 +173,12 @@ export default function PracticeScreen() {
         <Text style={styles.speakToggleText}>{autoSpeak ? '🔊 Auto-speak ON' : '🔇 Auto-speak OFF'}</Text>
       </Pressable>
 
-      {lastVoiceReport && (
+      {lastVoiceScores && lastVoiceScores.overall != null && (
         <View style={styles.voiceReport}>
           <Text style={styles.voiceReportText}>
-            Voice: {lastVoiceReport.overall_score}/100 · Fluency {lastVoiceReport.fluency} · Pronunciation {lastVoiceReport.pronunciation}
+            Voice: {lastVoiceScores.overall}/100
+            {lastVoiceScores.fluency != null ? ` · Fluency ${lastVoiceScores.fluency}` : ''}
+            {lastVoiceScores.pronunciation != null ? ` · Pronunciation ${lastVoiceScores.pronunciation}` : ''}
           </Text>
         </View>
       )}

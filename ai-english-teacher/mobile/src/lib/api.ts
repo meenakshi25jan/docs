@@ -106,11 +106,22 @@ export const api = {
     submit: (id: string, answers: unknown[]) =>
       request(`/assessments/${id}/submit`, { method: 'POST', body: { answers } }),
   },
-  conversations: {
-    start: (data: { scenario: string }) =>
+    conversations: {
+    start: (data: { scenario: string; persona_id?: string }) =>
       request('/conversations', { method: 'POST', body: data }),
     sendMessage: (id: string, content: string) =>
       request(`/conversations/${id}/messages`, { method: 'POST', body: { content } }),
+    voiceTurn: (
+      id: string,
+      data: {
+        transcript?: string;
+        audio_base64?: string;
+        audio_mime_type?: string;
+        duration_seconds?: number;
+        persona_id?: string;
+      },
+    ) => request(`/conversations/${id}/voice-turn`, { method: 'POST', body: data }),
+    lessonReport: (id: string) => request(`/conversations/${id}/lesson-report`),
   },
   dashboard: {
     student: () => request('/dashboard/student'),
@@ -122,6 +133,16 @@ export const api = {
       duration_seconds?: number;
       conversation_id?: string;
     }) => request('/voice/analyze', { method: 'POST', body: data }),
+    turn: (data: {
+      transcript?: string;
+      audio_base64?: string;
+      audio_mime_type?: string;
+      duration_seconds?: number;
+      conversation_id?: string;
+      scenario?: string;
+      persona_id?: string;
+      message_history?: Array<{ role: string; content: string }>;
+    }) => request('/voice/turn', { method: 'POST', body: data }),
   },
   grammar: {
     lessons: (grade: number) => request(`/grammar/lessons?grade=${grade}`),
