@@ -82,3 +82,4 @@ https://ai-english-teacher-web.onrender.com/grammar-class
 | Start Command | `python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
 
 Test API: https://ai-english-teacher-api.onrender.com/api/v1/grammar/grades
+# Last deploy trigger: 2026-07-30T15:25:12Z — grammar-class web redeploy
