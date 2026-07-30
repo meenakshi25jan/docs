@@ -22,7 +22,7 @@ bash scripts/backup_verify.sh
 
 1. Restore or create Neon database; set `DATABASE_URL`
 2. Delete and recreate Render Blueprint from root `render.yaml` (branch `main`)
-3. Set API env: `DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET_KEY`, `SKIP_MIGRATIONS=true`
+3. Set API env: `DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET_KEY`; ensure `SKIP_MIGRATIONS=false`
 4. Run migrations: `python3 scripts/migrate.py`
 5. Configure GitHub secrets for Deploy workflow
 6. Run verification:

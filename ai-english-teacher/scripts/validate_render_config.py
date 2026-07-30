@@ -59,8 +59,13 @@ def main() -> int:
         errors.append("Missing api service name")
     if not re.search(r"name:\s*ai-english-teacher-web", text):
         errors.append("Missing web service name")
-    if "SKIP_MIGRATIONS" in text and '"false"' not in text.split("SKIP_MIGRATIONS", 1)[1][:30]:
-        errors.append("API should set SKIP_MIGRATIONS: false to apply migrations on deploy")
+    api_part = text.split("ai-english-teacher-web", 1)[0]
+    if "SKIP_MIGRATIONS" in api_part:
+        mig_section = api_part.split("SKIP_MIGRATIONS", 1)[1][:60]
+        if re.search(r"value:\s*[\"']?true", mig_section, re.I):
+            errors.append("SKIP_MIGRATIONS must be false (never true in production)")
+        if '"false"' not in mig_section and "'false'" not in mig_section:
+            errors.append("API should set SKIP_MIGRATIONS: false")
 
     if errors:
         print("render.yaml validation FAILED:")

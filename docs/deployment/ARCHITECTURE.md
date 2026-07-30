@@ -41,7 +41,7 @@ sequenceDiagram
 - `pip install -r requirements-render.txt`
 - Copy SQL migrations into `backend/migrations/`
 - Start: `uvicorn app.main:app`
-- Migrations: `SKIP_MIGRATIONS=true` on Render; run `scripts/migrate.py` in deploy workflow or manually
+- Migrations: automatic via `start.sh` on every API deploy (`SKIP_MIGRATIONS=false`)
 
 ## Single source of truth
 

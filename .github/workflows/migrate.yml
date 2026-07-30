@@ -1,0 +1,35 @@
+name: AI English Teacher Migrate
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate render.yaml
+        run: python3 ai-english-teacher/scripts/validate_render_config.py
+
+      - name: Run database migrations
+        working-directory: ai-english-teacher/backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "FAIL: DATABASE_URL secret is required for migrations"
+            exit 1
+          fi
+          pip install -r requirements-render.txt
+          python3 scripts/migrate.py
+          python3 scripts/verify_migrations_applied.py
+
+      - name: Migration report
+        run: python3 ai-english-teacher/scripts/migration_report.py

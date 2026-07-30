@@ -12,13 +12,21 @@ on:
         type: boolean
         default: true
       run_verify:
-        description: Run post-deploy verification against production URLs
+        description: Run full post-deploy verification
+        type: boolean
+        default: true
+      trigger_render:
+        description: POST Render deploy hooks (if secrets configured)
         type: boolean
         default: true
 
 concurrency:
   group: ai-english-teacher-deploy
   cancel-in-progress: false
+
+env:
+  DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
+  DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
 
 jobs:
   deploy:
@@ -30,33 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate render.yaml
-        run: python3 ai-english-teacher/scripts/validate_render_config.py
-
-      - name: Trigger Render API deploy hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_API != '' }}
-        env:
-          RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+      - name: Validate deployment configuration
         run: |
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_API"
-          echo "API deploy hook triggered"
-
-      - name: Trigger Render Web deploy hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_WEB != '' }}
-        env:
-          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
-        run: |
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_WEB"
-          echo "Web deploy hook triggered"
-
-      - name: Note on auto-deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_API == '' && secrets.RENDER_DEPLOY_HOOK_WEB == '' }}
-        run: |
-          echo "No deploy hooks configured — relying on Render autoDeploy from render.yaml"
-          echo "Set secrets RENDER_DEPLOY_HOOK_API and RENDER_DEPLOY_HOOK_WEB for explicit triggers"
+          python3 ai-english-teacher/scripts/validate_render_config.py
+          python3 ai-english-teacher/scripts/validate_environment.py
 
       - uses: actions/setup-python@v5
-        if: github.event.inputs.run_migrations != 'false'
         with:
           python-version: '3.12'
 
@@ -67,45 +54,99 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL secret not set — skip migrations"
-            exit 0
+            echo "FAIL: DATABASE_URL secret required for production migrations"
+            exit 1
           fi
           pip install -r requirements-render.txt
           python3 scripts/migrate.py
+          python3 scripts/verify_migrations_applied.py
 
-      - name: Wait for Render deploy (initial)
+      - name: Trigger Render API deploy hook
+        if: >
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_render != 'false') ||
+          github.event_name == 'workflow_run'
+        env:
+          RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_API" ]; then
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_API"
+            echo "API deploy hook triggered"
+          else
+            echo "RENDER_DEPLOY_HOOK_API not set — relying on Render autoDeploy from main"
+          fi
+
+      - name: Wait for API healthy
         if: github.event.inputs.run_verify != 'false'
-        run: sleep 120
+        env:
+          WAIT_BASE_URL: ${{ env.DEPLOY_API_URL }}
+          WAIT_PATHS: /health/live,/health,/health/ready
+          WAIT_TIMEOUT: '600'
+          WAIT_INTERVAL: '20'
+        run: python3 ai-english-teacher/scripts/wait_for_healthy.py
+
+      - name: Trigger Render Web deploy hook
+        if: >
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_render != 'false') ||
+          github.event_name == 'workflow_run'
+        env:
+          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_WEB" ]; then
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_WEB"
+            echo "Web deploy hook triggered"
+          else
+            echo "RENDER_DEPLOY_HOOK_WEB not set — relying on Render autoDeploy from main"
+          fi
+
+      - name: Wait for Web healthy
+        if: github.event.inputs.run_verify != 'false'
+        env:
+          WAIT_BASE_URL: ${{ env.DEPLOY_WEB_URL }}
+          WAIT_PATHS: /,/grammar-class,/conversation
+          WAIT_TIMEOUT: '600'
+          WAIT_INTERVAL: '20'
+        run: python3 ai-english-teacher/scripts/wait_for_healthy.py
 
       - name: Post-deploy verification (with retries)
         if: github.event.inputs.run_verify != 'false'
         env:
-          DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
-          DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
           TIMEOUT_SECONDS: '90'
-          DEPLOY_VERIFY_GRAMMAR_CLASS: ${{ vars.DEPLOY_VERIFY_GRAMMAR_CLASS || 'true' }}
+          POST_DEPLOY_REGISTER_USER: 'true'
+          POST_DEPLOY_REPORT: post_deploy_report.json
         run: |
           for i in 1 2 3 4 5 6 8 10 12; do
             echo "Verification attempt $i..."
-            if python3 ai-english-teacher/scripts/deploy_verify.py; then
+            if python3 ai-english-teacher/scripts/post_deploy_verify.py; then
               exit 0
             fi
             sleep 30
           done
-          echo "Deploy verification failed after retries"
+          echo "Post-deploy verification failed after retries"
           exit 1
 
       - name: Performance smoke
         if: github.event.inputs.run_verify != 'false'
         env:
-          DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
-          DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
           MAX_LATENCY_MS: '10000'
         run: python3 ai-english-teacher/scripts/performance_smoke.py
+
+      - name: Deployment diagnosis report
+        if: always()
+        run: python3 ai-english-teacher/scripts/diagnose_deployment.py || true
+
+      - name: Upload deployment report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-report
+          path: |
+            post_deploy_report.json
+            ai-english-teacher/scripts/diagnose_deployment_report.json
+          if-no-files-found: ignore
 
       - name: Deployment success notification
         if: success()
         run: |
-          echo "::notice title=Deploy Success::AI English Teacher deploy verification passed"
-          echo "Web: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}"
-          echo "API: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}"
+          echo "::notice title=Deploy Success::Production verification passed"
+          echo "Web: $DEPLOY_WEB_URL"
+          echo "API: $DEPLOY_API_URL"

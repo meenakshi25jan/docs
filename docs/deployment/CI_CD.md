@@ -5,6 +5,7 @@
 | Workflow | File | Trigger |
 |----------|------|---------|
 | CI | `.github/workflows/ci.yml` | Push/PR touching `ai-english-teacher/` or `render.yaml` |
+| Migrate | `.github/workflows/migrate.yml` | Manual |
 | Deploy | `.github/workflows/deploy.yml` | After CI succeeds on `main`, or manual |
 
 ## Pipeline diagram
@@ -22,9 +23,10 @@ flowchart TD
   DK --> OK
   SEC[security: Trivy + Gitleaks] --> OK
   OK -->|main only| DEP[deploy workflow]
-  DEP --> HOOKS[Render deploy hooks]
-  DEP --> MIG[migrate.py]
-  DEP --> VERIFY[deploy_verify.py]
+  DEP --> MIG[migrate + verify tables]
+  DEP --> API[wait API healthy]
+  DEP --> WEB[wait web healthy]
+  DEP --> VERIFY[post_deploy_verify.py]
   DEP --> PERF[performance_smoke.py]
 ```
 

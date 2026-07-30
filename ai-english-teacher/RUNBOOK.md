@@ -125,7 +125,7 @@
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `SKIP_MIGRATIONS` | `true` on Render | Set `false` to auto-run migrations on start |
+| `SKIP_MIGRATIONS` | **`false`** — migrations run automatically via `start.sh` |
 | `DEBUG` | `false` | Enable API debug mode |
 | `AI_PROVIDER` | `auto` | `copilot`, `openai`, `groq`, `ollama`, or `mock` |
 | `COGNITIVE_ORCHESTRATION_ENABLED` | `true` | Set `false` to route turns through LangGraph only (cognitive layer disabled) |
