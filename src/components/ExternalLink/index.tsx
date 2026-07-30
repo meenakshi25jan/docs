@@ -1,36 +1,43 @@
-import React from "react";
-import {ExternalLinkGraphic} from "./styles";
-import {track, trackExternalLink, AnalyticsEventType} from "../../utils/track";
+import React, { useEffect, useRef } from 'react';
+import { trackExternalLink } from '../../utils/track';
 
 type ExternalLinkProps = {
+  children: React.ReactNode;
   graphic?: string;
   href: string;
   anchorTitle?: string;
+  icon?: boolean;
+  className?: string;
 };
 
 const ExternalLink: React.FC<ExternalLinkProps> = ({
   children,
-  graphic,
   href,
-  anchorTitle,
+  className
 }) => {
+  const [label, setLabel] = React.useState('');
+  const linkRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (linkRef.current) {
+      const text = linkRef.current.innerText;
+      setLabel(text ? text : '');
+    }
+  }, []);
+
   return (
     <a
       href={href}
+      className={className}
+      aria-label={label + ' (opens in new tab)'}
       rel="noopener noreferrer"
       target="_blank"
-      title={anchorTitle}
-      onClick={(e) => {
+      onClick={() => {
         trackLink(href);
       }}
+      ref={linkRef}
     >
       {children}
-      {graphic && (
-        <ExternalLinkGraphic
-          alt="External link"
-          src={`/assets/external-link-${graphic}.svg`}
-        />
-      )}
     </a>
   );
 };
@@ -38,9 +45,5 @@ const ExternalLink: React.FC<ExternalLinkProps> = ({
 export default ExternalLink;
 
 function trackLink(href) {
-  track({
-    type: AnalyticsEventType.EXTERNAL_LINK_CLICK,
-    attributes: {from: location.href, to: href},
-  });
   trackExternalLink(href);
 }

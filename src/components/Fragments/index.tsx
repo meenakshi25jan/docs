@@ -1,11 +1,17 @@
-import FilterChildren from "../FilterChildren";
+import { Fragment } from 'react';
+import FilterChildren from '../FilterChildren';
 
-export default function Fragments({fragments}) {
-  const children = [];
+export default function Fragments({ fragments }) {
+  const children: React.ReactNode[] = [];
+
+  let filterKey = '';
+
   for (const key in fragments) {
+    if (!filterKey) filterKey = key;
     const fragment = fragments[key]([]);
-    children.push(<div key={key}>{fragment}</div>);
+
+    children.push(<Fragment key={key}>{fragment}</Fragment>);
   }
 
-  return <FilterChildren>{children}</FilterChildren>;
+  return <FilterChildren filterKey={filterKey}>{children}</FilterChildren>;
 }

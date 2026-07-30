@@ -2,9 +2,15 @@
 <Block name="Java">
 
 ```java
+import android.util.Log;
+import com.amplifyframework.core.Amplify;
+import com.amplifyframework.datastore.generated.model.Post;
+```
+
+```java
 Post post = Post.builder()
     .title("Create an Amplify DataStore app")
-    .status(PostStatus.PUBLISHED)
+    .status(PostStatus.ACTIVE)
     .build();
 
 Amplify.DataStore.save(post,
@@ -17,24 +23,36 @@ Amplify.DataStore.save(post,
 <Block name="Kotlin - Callbacks">
 
 ```kotlin
-val post = Post.builder()
-    .title("Create an Amplify DataStore app")
-    .status(PostStatus.PUBLISHED)
-    .build()
-
-Amplify.DataStore.save(post,
-    { Log.i("MyAmplifyApp", "Created a new post successfully") },
-    { Log.e("MyAmplifyApp", "Error creating post", error) }
-)
+import android.util.Log
+import com.amplifyframework.core.Amplify
+import com.amplifyframework.datastore.generated.model.Post
 ```
-
-</Block>
-<Block name="Kotlin - Coroutines (Beta)">
 
 ```kotlin
 val post = Post.builder()
     .title("Create an Amplify DataStore app")
-    .status(PostStatus.PUBLISHED)
+    .status(PostStatus.ACTIVE)
+    .build()
+
+Amplify.DataStore.save(post,
+    { Log.i("MyAmplifyApp", "Created a new post successfully") },
+    { Log.e("MyAmplifyApp", "Error creating post", it) }
+)
+```
+
+</Block>
+<Block name="Kotlin - Coroutines">
+
+```kotlin
+import android.util.Log
+import com.amplifyframework.datastore.generated.model.Post
+import com.amplifyframework.kotlin.core.Amplify
+```
+
+```kotlin
+val post = Post.builder()
+    .title("Create an Amplify DataStore app")
+    .status(PostStatus.ACTIVE)
     .build()
 
 try {
@@ -48,10 +66,16 @@ try {
 </Block>
 <Block name="RxJava">
 
+ ```java
+import android.util.Log;
+import com.amplifyframework.datastore.generated.model.Post;
+import com.amplifyframework.rx.RxAmplify;
+```   
+
 ```java
 Post post = Post.builder()
     .title("Create an Amplify DataStore app")
-    .status(PostStatus.PUBLISHED)
+    .status(PostStatus.ACTIVE)
     .build();
 
 RxAmplify.DataStore.save(post).subscribe(

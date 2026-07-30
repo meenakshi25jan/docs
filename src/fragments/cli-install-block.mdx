@@ -1,12 +1,10 @@
 <BlockSwitcher>
 
-<Block name="NPM">
+<Block name="npm">
 
 ```bash
 npm install -g @aws-amplify/cli
 ```
-
-**Note:** Because we're installing the Amplify CLI globally, you might need to run the command above with `sudo` depending on your system policies.
 
 </Block>
 
@@ -27,3 +25,9 @@ curl -sL https://aws-amplify.github.io/amplify-cli/install-win -o install.cmd &&
 </Block>
 
 </BlockSwitcher>
+
+<Callout warning>
+
+[Resolve `EACCES` permissions when installing packages globally](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally) with npm
+
+</Callout>

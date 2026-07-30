@@ -1,10 +1,30 @@
-```javascript
-async function forgetDevice() {
-    try{
-        const result = await Auth.forgetDevice();
-        console.log(result)
-    }catch (error) {
-        console.log('Error forgetting device', error)
-    }
+<BlockSwitcher>
+<Block name="TypeScript">
+
+```ts
+import { forgetDevice } from 'aws-amplify/auth';
+
+export async function handleForgetDevice() {
+  try {
+    await forgetDevice();
+  } catch (error) {
+    console.log(error);
+  }
 }
 ```
+</Block>
+<Block name="JavaScript">
+
+```js
+import { forgetDevice } from 'aws-amplify/auth';
+
+export async function handleForgetDevice() {
+  try {
+    await forgetDevice();
+  } catch (error) {
+    console.log(error);
+  }
+}
+```
+</Block>
+</BlockSwitcher>

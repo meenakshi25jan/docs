@@ -1,13 +1,36 @@
-To delete an object uploaded to S3, use `Amplify.Storage.remove` and specify the key:
+## Remove a file
+
+You can remove a single file using `Amplify.Storage.remove`.
 
 ```dart
-Future<void> deleteFile() async {
+Future<void> removeFile() async {
   try {
-    final RemoveResult result =
-        await Amplify.Storage.remove(key: 'ExampleKey');
-    print('Deleted file: ${result.key}');
+    final result = await Amplify.Storage.remove(
+      path: const StoragePath.fromString('public/file.txt'),
+    ).result;
+    safePrint('Removed file: ${result.removedItem.path}');
   } on StorageException catch (e) {
-    print('Error deleting file: $e');
+    safePrint(e.message);
+  }
+}
+```
+
+## Remove multiple files
+
+You can remove multiple files using `Amplify.Storage.removeMany`.
+
+```dart
+Future<void> remove() async {
+  try {
+    final result = await Amplify.Storage.removeMany(
+      paths: [
+        const StoragePath.fromString('public/file-1.txt'),
+        const StoragePath.fromString('public/file-2.txt'),
+      ],
+    ).result;
+    safePrint('Removed files: ${result.removedItems}');
+  } on StorageException catch (e) {
+    safePrint(e.message);
   }
 }
 ```

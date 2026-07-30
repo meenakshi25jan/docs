@@ -1,4 +1,10 @@
-In terminal, navigate to your project, run `amplify add auth`, and choose the following options:
+Once you have the social provider configured, run the following in your project’s root folder
+
+```bash
+amplify add auth     ## "amplify update auth" if already configured
+```
+
+Choose the following options (the last steps are specific to Facebook here but are similar for other providers):
 
 ```terminal
 ? Do you want to use the default authentication and security configuration? 
@@ -12,9 +18,17 @@ In terminal, navigate to your project, run `amplify add auth`, and choose the fo
 ? Enter your redirect signin URI: 
     `myapp://`
 ? Do you want to add another redirect signin URI 
+    `Yes`
+? Enter your redirect signin URI: 
+    `http://localhost:3000/`
+? Do you want to add another redirect signin URI 
     `No`
 ? Enter your redirect signout URI: 
     `myapp://`
+? Do you want to add another redirect signout URI 
+    `Yes`
+? Enter your redirect signout URI: 
+    `http://localhost:3000/`
 ? Do you want to add another redirect signout URI 
     `No`
 ? Select the social providers you want to configure for your user pool: 

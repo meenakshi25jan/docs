@@ -1,0 +1,37 @@
+import { getCustomStaticPath } from '@/utils/getCustomStaticPath';
+import { getChildPageNodes } from '@/utils/getChildPageNodes';
+
+export const meta = {
+  title: 'Gen 2 for Gen 1 customers',
+  description: 'Learn how to migrate your Amplify Gen 1 backend to Gen 2, or understand how Gen 1 features map to Gen 2.',
+  route: '/[platform]/start/migrate-to-gen2',
+  platforms: [
+    'android',
+    'angular',
+    'flutter',
+    'javascript',
+    'nextjs',
+    'react',
+    'react-native',
+    'swift',
+    'vue'
+  ]
+};
+
+export const getStaticPaths = async () => {
+  return getCustomStaticPath(meta.platforms);
+};
+
+export function getStaticProps(context) {
+  const childPageNodes = getChildPageNodes(meta.route);
+  return {
+    props: {
+      meta,
+      childPageNodes
+    }
+  };
+}
+
+Whether you're migrating an existing Gen 1 environment or exploring what's changed in Gen 2, these guides will help you navigate the transition.
+
+<Overview childPageNodes={props.childPageNodes} />

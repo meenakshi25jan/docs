@@ -1,4 +1,4 @@
-For the examples below with DataStore let's add a new model to the [sample schema](/lib/datastore/getting-started#sample-schema):
+For the examples below with DataStore let's add a new model to the [sample schema](/gen1/[platform]/build-a-backend/more-features/datastore/set-up-datastore/#sample-schema):
 
 ```graphql
 enum PostStatus {
@@ -12,14 +12,13 @@ type Post @model {
   rating: Int!
   status: PostStatus!
   # New field with @hasMany
-  comments: [Comment] @hasMany(indexName: "byPost", fields: ["id"])
+  comments: [Comment] @hasMany
 }
 
 # New model
 type Comment @model {
   id: ID!
-  postID: ID! @index(name: "byPost", sortKeyFields: ["content"])
-  post: Post! @belongsTo(fields: ["postID"])
+  post: Post @belongsTo
   content: String!
 }
 ```

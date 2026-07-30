@@ -18,7 +18,7 @@ Amplify.Geo.searchByText(searchQuery,
 ```
 
 </Block>
-<Block name="Kotlin">
+<Block name="Kotlin - Callbacks">
 
 ```kotlin
 val searchQuery = "Amazon Go"
@@ -30,6 +30,36 @@ Amplify.Geo.searchByText(searchQuery,
     },
     { Log.e("MyAmplifyApp", "Failed to search for $searchQuery", it) }
 )
+```
+
+</Block>
+<Block name="Kotlin - Coroutines">
+
+```kotlin
+val searchQuery = "Amazon Go"
+try {
+    val result = Amplify.Geo.searchByText(searchQuery)
+    for (place in result.places) {
+        Log.i("MyAmplifyApp", place.toString())
+    }
+} catch (error: GeoException) { 
+    Log.e("MyAmplifyApp", "Failed to search for $searchQuery", it)
+}
+```
+
+</Block>
+<Block name="RxJava">
+
+```java
+String searchQuery = "Amazon Go";
+RxAmplify.Geo.searchByText(searchQuery).subscribe(
+    result -> {
+        for (final Place place : result.getPlaces()) {
+            Log.i("MyAmplifyApp", place.toString());
+        }
+    },
+    error -> Log.e("MyAmplifyApp", "Failed to search for " + searchQuery, error)
+);
 ```
 
 </Block>
@@ -55,7 +85,7 @@ GeoSearchByTextOptions options = GeoSearchByTextOptions.builder()
 ```
 
 </Block>
-<Block name="Kotlin">
+<Block name="Kotlin - Callbacks">
 
 ```kotlin
 val position = Coordinates(47.6153, -122.3384)
@@ -64,6 +94,30 @@ val options = GeoSearchByTextOptions.builder()
     .searchArea(SearchArea.near(position))
     .countries(listOf(CountryCode.USA))
     .build()
+```
+
+</Block>
+<Block name="Kotlin - Coroutines">
+
+```kotlin
+val position = Coordinates(47.6153, -122.3384)
+val options = GeoSearchByTextOptions.builder()
+    .maxResults(10)
+    .searchArea(SearchArea.near(position))
+    .countries(listOf(CountryCode.USA))
+    .build()
+```
+
+</Block>
+<Block name="RxJava">
+
+```java
+Coordinates position = new Coordinates(47.6153, -122.3384);
+GeoSearchByTextOptions options = GeoSearchByTextOptions.builder()
+    .maxResults(10)
+    .searchArea(SearchArea.near(position))
+    .countries(Collections.singletonList(CountryCode.USA))
+    .build();
 ```
 
 </Block>

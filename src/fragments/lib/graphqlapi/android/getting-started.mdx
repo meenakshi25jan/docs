@@ -1,10 +1,11 @@
 > ### Prerequisites
-> * An [Android project](https://developer.android.com/training/basics/firstapp/creating-project) targeting Android API level 16 (Android 4.1) or above
-> * [Install and configure](/cli/start/install) the Amplify CLI
+>
+> - An [Android project](https://developer.android.com/training/basics/firstapp/creating-project) targeting Android API level 24 (Android 7.0) or above
+> - [Install and configure](/gen1/[platform]/tools/cli/start/set-up-cli/) the Amplify CLI
 
 ## GraphQL API with Amplify
 
-The Amplify API category provides a solution for making HTTP requests to REST and GraphQL endpoints.  For GraphQL, it supports [AWS AppSync](https://aws.amazon.com/appsync/).
+The Amplify API category provides a solution for making HTTP requests to REST and GraphQL endpoints. For GraphQL, it supports [AWS AppSync](https://aws.amazon.com/appsync/).
 
 ## Create GraphQL API service
 
@@ -27,6 +28,7 @@ amplify add api
 ```
 
 This will create the following schema for us to get started with:
+
 ```graphql
 type Blog @model {
   id: ID!
@@ -76,7 +78,7 @@ The following types do not have '@auth' enabled. Consider using @auth with @mode
      - Blog
      - Post
      - Comment
-Learn more about [@auth here](/cli/graphql/authorization-rules).
+Learn more about [@auth here](/gen1/[platform]/build-a-backend/graphqlapi/customize-authorization-rules/).
 
 GraphQL schema compiled successfully.
 ```
@@ -103,48 +105,23 @@ Next, add the following dependencies to your **app** `build.gradle`:
 dependencies {
   implementation 'com.amplifyframework:aws-api:ANDROID_VERSION'
 
-  // Support for Java 8 features
-  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+  // Support for modern Java features
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:ANDROID_DESUGAR_VERSION'
 }
 ```
-Also in your **app** `build.gradle`, add this piece of code to support the Java 8 features Amplify uses:
+
+Also in your **app** `build.gradle`, add this piece of code to support the modern Java features Amplify uses:
 
 ```groovy
 android {
   compileOptions {
-    // Support for Java 8 features
+    // Support for modern Java features
     coreLibraryDesugaringEnabled true
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
   }
 }
 ```
 
 Sync the project with Maven and ensure it builds successfully.
-
-### (Optional) Add Gradle Plugin to auto generate models
-
-If you would like your models to easily update both locally and on the server when you make changes to your schema, follow these steps to install our Gradle Plugin which automates the whole process on build:
-
-1 - Add the following dependencies to your **project** `build.gradle`:
-
-* `classpath 'com.amplifyframework:amplify-tools-gradle-plugin:1.0.2'` as a dependency
-* A plugin of `'com.amplifyframework.amplifytools'` as in the example below:
-
-```groovy
-buildscript {
-  dependencies {
-      classpath 'com.android.tools.build:gradle:4.1.2'
-      classpath 'com.amplifyframework:amplify-tools-gradle-plugin:1.0.2'
-  }
-}
-
-apply plugin: 'com.amplifyframework.amplifytools'
-```
-
-2 - Run 'Make Project'
-
-When the build is successful, it adds two gradle tasks to you project - `modelgen` and `amplifyPush`. These can be found in the configuration dropdown menu which currently would display app if it's a new project, up where you would run your project. Whenever you update your schema (found at `amplify/backend/api/amplifyDatasource/schema.graphql`) run the `modelgen` task followed by `amplifyPush` to update your online resources and local Java models.
 
 ## Initialize Amplify
 

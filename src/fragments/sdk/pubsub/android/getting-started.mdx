@@ -18,8 +18,8 @@ Set up AWS Mobile SDK components by including the following libraries in your `a
 
 ```groovy
 dependencies {
-  implementation 'com.amazonaws:aws-android-sdk-iot:2.37.1'
-  implementation 'com.amazonaws:aws-android-sdk-mobile-client:2.37.1'
+  implementation 'com.amazonaws:aws-android-sdk-iot:ANDROID_SDK_VERSION'
+  implementation 'com.amazonaws:aws-android-sdk-mobile-client:ANDROID_SDK_VERSION'
 }
 ```
 
@@ -44,7 +44,7 @@ AWSIotMqttManager mqttManager = new AWSIotMqttManager(
 ```
 
 <Callout>
-You can get the endpoint information from the IoT Core -> Settings page on the AWS Console.
+You can get the endpoint information from the IoT Core -{'>'} Settings page on the AWS Console.
 </Callout>
 
 **Create IAM policies for AWS IoT**
@@ -53,7 +53,7 @@ To use PubSub with AWS IoT, you will need to create the necessary IAM policies i
 
 Go to IoT Core and choose *Secure* from the left navigation pane, and then *Policies* from the dropdown menu. Next, click *Create*. The following `myIOTPolicy` policy will allow full access to all the topics.
 
-![Alt text](/images/iot_attach_policy.png)
+![Shows IoT policy dropdown on AWS Console](/images/iot_attach_policy.png)
 
 **Attach your policy to your Amazon Cognito Identity**
 

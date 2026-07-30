@@ -1,15 +1,36 @@
+Add the model above to the `schema.graphql` file located by default at `amplify/backend/{api_name}/` and regenerate the models again with the following command:
+
+```bash
+amplify codegen models
+```
+
+Once it is regenerated, save your posts with many-to-many mode like the following:
+
 ```dart
-Post post = Post(title: 'My First Post');
-User editor = User(username: 'Nadia');
-PostEditor postEditor = PostEditor(post: post, editor: editor);
+import 'package:amplify_flutter/amplify_flutter.dart';
 
-// first you save the post
-await Amplify.DataStore.save(post);
+import 'models/ModelProvider.dart';
 
-// secondly, you save the editor/user
-await Amplify.DataStore.save(editor);
+Future<void> savePostAndEditor() async {
+  final post = Post(
+    title: 'My First Post',
+    rating: 10,
+    status: PostStatus.INACTIVE,
+  );
+  final editor = User(username: 'Nadia');
+  final postEditor = PostEditor(post: post, user: editor);
 
-// then you save the mode that links a post with an editor
-await Amplify.DataStore.save(postEditor);
-print('Saved user, post and postEditor!');
+  try {
+    // first you save the post
+    await Amplify.DataStore.save(post);
+
+    // secondly, you save the editor/user
+    await Amplify.DataStore.save(editor);
+
+    // then you save the model that links a post with an editor
+    await Amplify.DataStore.save(postEditor);
+  } on DataStoreException catch (e) {
+    safePrint('Something went wrong saving model: ${e.message}');
+  }
+}
 ```

@@ -4,6 +4,11 @@ To record an event, create an `AnalyticsEvent` and call `Amplify.Analytics.recor
 <Block name="Java">
 
 ```java
+import com.amplifyframework.analytics.AnalyticsEvent;
+import com.amplifyframework.core.Amplify;
+```
+
+```java
 AnalyticsEvent event = AnalyticsEvent.builder()
     .name("PasswordReset")
     .addProperty("Channel", "SMS")
@@ -17,6 +22,11 @@ Amplify.Analytics.recordEvent(event);
 
 </Block>
 <Block name="Kotlin">
+
+```kotlin
+import com.amplifyframework.analytics.AnalyticsEvent
+import com.amplifyframework.core.Amplify
+```
 
 ```kotlin
 val event = AnalyticsEvent.builder()
@@ -34,6 +44,11 @@ Amplify.Analytics.recordEvent(event)
 <Block name="RxJava">
 
 ```java
+import com.amplifyframework.analytics.AnalyticsEvent;
+import com.amplifyframework.rx.RxAmplify;
+```
+
+```java
 AnalyticsEvent event = AnalyticsEvent.builder()
     .name("PasswordReset")
     .addProperty("Channel", "SMS")
@@ -47,3 +62,11 @@ RxAmplify.Analytics.recordEvent(event);
 
 </Block>
 </BlockSwitcher>
+
+<Callout>
+
+The AWS Pinpoint event count updates in minutes after recording your event.
+
+However, it can take upwards of 30 minutes for the event to display in the Filter section, and for its custom attributes to appear in Pinpoint. 
+
+</Callout>

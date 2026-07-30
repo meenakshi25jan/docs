@@ -3,15 +3,19 @@ frontend:
   phases:
     preBuild:
       commands:
-        - yarn install
+        - corepack enable
+        - yarn set version stable
+        - yarn install --frozen-lockfile
     build:
       commands:
-        - NODE_ENV=production yarn build
+        - echo "BUILD_ENV=$BUILD_ENV" >> .env.custom
+        - node -e 'console.log(`node heap limit = ${require("v8").getHeapStatistics().heap_size_limit / (1024 * 1024)} Mb`)'
+        - NODE_ENV=production yarn build:release
   artifacts:
     # IMPORTANT - Please verify your build output directory
     baseDirectory: /client/www/next-build
     files:
-      - "**/*"
+      - '**/*'
   cache:
     paths:
       - node_modules/**/*

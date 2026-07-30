@@ -2,19 +2,19 @@
 
 To update an item via the API endpoint:
 
+
 ```dart
-try {
-    RestOptions options = RestOptions(
-        path: '/todo',
-        body: Uint8List.fromList('{\'name\':\'Mow the lawn\'}'.codeUnits)
+Future<void> updateTodo() async {
+  try {
+    final restOperation = Amplify.API.put(
+      'todo/1',
+      body: HttpPayload.json({'name': 'Mow the lawn'}),
     );
-    RestOperation restOperation = Amplify.API.put(
-        restOptions: options
-    );
-    RestResponse response = await restOperation.response;
+    final response = await restOperation.response;
     print('PUT call succeeded');
-    print(new String.fromCharCodes(response.data));
-} on ApiException catch (e) {
+    print(response.decodeBody());
+  } on ApiException catch (e) {
     print('PUT call failed: $e');
+  }
 }
 ```

@@ -24,7 +24,7 @@ lifecycleScope.launch {
 
 Coroutines can greatly improve the readability of dependent, asynchronous calls. Moreover, you can use scopes, dispatchers, and other Kotlin coroutine primitives to get more control over your execution context.
 
-Let's consider what happens when we have three dependent operations. We want to save a `Post`, then an `Editor`, and finally a `PostEditor`. With Amplify's coroutines interface, we can write these operations sequentially:
+Let's consider what happens when you have three dependent operations. You want to save a `Post`, then an `Editor`, and finally a `PostEditor`. With Amplify's coroutines interface, you can write these operations sequentially:
 
 ```kotlin
 lifecycleScope.launch {
@@ -44,12 +44,12 @@ In Amplify's vanilla APIs, this would have created a large block of code with th
 
 Amplify's coroutine support is included in an optional module, `core-kotlin`.
 
-1.  Under **Gradle Scripts**, open **build.gradle (Module: [YourApplicationName])**, and add the following line in `dependencies`:
+1.  Under **Gradle Scripts**, open **build.gradle (Module :app)**, and add the following line in `dependencies`:
 
     ```groovy
     dependencies {
         // Add the below line in `dependencies`
-        implementation 'com.amplifyframework:core-kotlin:ANDROID_KOTLIN_VERSION'
+        implementation 'com.amplifyframework:core-kotlin:ANDROID_VERSION'
     }
     ```
 
@@ -61,7 +61,7 @@ Amplify's coroutine support is included in an optional module, `core-kotlin`.
 
 ## Usage
 
-Amplify tries to map the behavior of our callback-based APIs to Kotlin primitives in an intuitive way. Functions whose callbacks emit a single value (or error) are now expressed as suspending functions, returning the value instead. Functions whose callbacks emit a stream of values will now return Kotlin `Flow`s, instead.
+Amplify tries to map the behavior of your callback-based APIs to Kotlin primitives in an intuitive way. Functions whose callbacks emit a single value (or error) are now expressed as suspending functions, returning the value instead. Functions whose callbacks emit a stream of values will now return Kotlin `Flow`s, instead.
 
 ## Special cases
 

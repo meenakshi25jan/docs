@@ -1,12 +1,187 @@
-/src/pages/** @aws-amplify/amplify-sa
-/src/pages/cli @aws-amplify/amplify-cli @aws-amplify/amplify-sa
-/src/pages/console @aws-amplify/amplify-console @aws-amplify/amplify-sa
-/src/pages/guides @aws-amplify/developer-advocates @aws-amplify/amplify-sa
-/src/fragments/** @aws-amplify/amplify-sa
-/src/fragments/**/android @aws-amplify/android-team @aws-amplify/amplify-sa
-/src/fragments/**/flutter @aws-amplify/amplify-flutter @aws-amplify/amplify-sa
-/src/fragments/**/ios @aws-amplify/ios-team @aws-amplify/amplify-sa
-/src/fragments/**/js  @aws-amplify/amplify-js @aws-amplify/amplify-sa
-/src/fragments/cli @aws-amplify/amplify-cli @aws-amplify/amplify-sa
-/src/fragments/console @aws-amplify/amplify-console @aws-amplify/amplify-sa
-/src/fragments/guides @aws-amplify/developer-advocates @aws-amplify/amplify-sa
+#Other
+/src/pages/gen1/\[platform\]/build-a-backend/existing-resources/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/functions/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/how-amplify-works/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/api/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/info @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/configuration/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/how-amplify-works/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/functions/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/functions/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/custom-resources/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/delete-backup-resources/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/environment-variables-and-secrets/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/q-developer/ @aws-amplify/amplify-documentation-admins
+
+#CLI
+/src/fragments/cli/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/tools/cli/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/tools/cli-legacy/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/reference/cli-commands/ @aws-amplify/amplify-documentation-admins
+
+#Studio
+/src/pages/gen1/\[platform\]/tools/console/ @aws-amplify/amplify-documentation-admins
+ 
+#Analytics
+/src/fragments/**/analytics/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/analytics/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/analytics/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/analytics/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/analytics/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/existing-resources/cli @aws-amplify/amplify-documentation-admins
+
+#Auth
+/src/fragments/**/auth/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/auth/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/auth/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/auth/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/start/getting-started/auth/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/auth/ @aws-amplify/amplify-documentation-admins
+
+#Client Configuration
+/src/fragments/**/client-configuration @aws-amplify/amplify-documentation-admins
+/src/fragments/**/configuration @aws-amplify/amplify-documentation-admins
+
+#Common
+/src/fragments/common @aws-amplify/amplify-documentation-admins
+/src/fragments/**/common @aws-amplify/amplify-documentation-admins
+
+#Data
+/src/fragments/**/datastore @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/datastore @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/datastore/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/data/ @aws-amplify/amplify-documentation-admins
+
+#Debugging
+/src/fragments/**/debugging @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/debugging/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/debugging/ @aws-amplify/amplify-documentation-admins
+
+#Geo
+/src/fragments/**/geo @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/geo/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/geo/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/geo/ @aws-amplify/amplify-documentation-admins
+
+#Getting Started
+/src/fragments/start @aws-amplify/amplify-documentation-admins
+/src/fragments/gen2/quickstart/ @aws-amplify/amplify-documentation-admins
+/src/fragments/**/start/ @aws-amplify/amplify-documentation-admins
+/src/fragments/**/project-setup @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/start/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/start/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/start/ @aws-amplify/amplify-documentation-admins
+
+#GraphQL API
+/src/fragments/**/api-graphql @aws-amplify/amplify-documentation-admins
+/src/fragments/**/graphqlapi @aws-amplify/amplify-documentation-admins
+/src/fragments/sdk/api/**/graphql.mdx @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/functions/graphql-from-lambda/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/graphqlapi/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/graphqlapi/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/api/graphql/ @aws-amplify/amplify-documentation-admins
+
+#In-App Messaging
+/src/fragments/**/in-app-messaging @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/in-app-messaging/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/in-app-messaging/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/in-app-messaging/ @aws-amplify/amplify-documentation-admins
+
+#Info
+/src/fragments/**/info @aws-amplify/amplify-documentation-admins
+
+#Interactions
+/src/fragments/**/interactions @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/interactions/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/interactions/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/interactions/ @aws-amplify/amplify-documentation-admins
+
+#Logging
+/src/fragments/**/logging @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/logging/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/logging/ @aws-amplify/amplify-documentation-admins
+
+#Predictions
+/src/fragments/**/predictions @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/predictions/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/predictions/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/predictions/ @aws-amplify/amplify-documentation-admins
+
+#PubSub
+/src/fragments/**/pubsub @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/more-features/pubsub/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/more-features/pubsub/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/pubsub/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/pubsub/ @aws-amplify/amplify-documentation-admins
+
+#Push Notifications
+/src/fragments/**/push-notifications @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/push-notifications/ @aws-amplify/amplify-documentation-admins 
+/src/pages/gen1/\[platform\]/prev/build-a-backend/push-notifications/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/push-notifications/ @aws-amplify/amplify-documentation-admins
+
+#Rest API
+/src/fragments/**/api-rest @aws-amplify/amplify-documentation-admins
+/src/fragments/**/restapi @aws-amplify/amplify-documentation-admins
+/src/fragments/sdk/api/**/rest.mdx @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/restapi/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/restapi/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/api/rest/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/add-aws-services/rest-api/ @aws-amplify/amplify-documentation-admins
+
+#SSR
+/src/fragments/**/ssr @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/server-side-rendering/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/server-side-rendering/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/server-side-rendering/ @aws-amplify/amplify-documentation-admins
+
+#Storage
+/src/fragments/**/storage @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/storage/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/storage/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/sdk/storage/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/storage/ @aws-amplify/amplify-documentation-admins
+
+#Troubleshooting
+/src/fragments/**/troubleshooting @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/troubleshooting/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/troubleshooting/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-a-backend/troubleshooting/ @aws-amplify/amplify-documentation-admins
+
+#UI
+/src/fragments/ui/auth/react/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-ui/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-ui/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/build-ui/ @aws-amplify/amplify-documentation-admins
+
+#Utilities
+/src/fragments/**/utilities @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/build-a-backend/utilities/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/build-a-backend/utilities/ @aws-amplify/amplify-documentation-admins
+
+#Deploy and Host 
+/src/pages/gen1/\[platform\]/deploy-and-host/ @aws-amplify/amplify-documentation-admins
+/src/pages/gen1/\[platform\]/prev/deploy-and-host/ @aws-amplify/amplify-documentation-admins
+/src/pages/\[platform\]/deploy-and-host/ @aws-amplify/amplify-documentation-admins
+
+#Docs Engineering
+/src/components @aws-amplify/documentation-team
+/src/constants @aws-amplify/documentation-team 
+/src/data @aws-amplify/documentation-team
+/src/directory @aws-amplify/documentation-team
+/src/directory/directory.mjs @aws-amplify/amplify-documentation-admins
+/src/pages/contribute/ @aws-amplify/documentation-team
+/src/pages/_app.tsx @aws-amplify/documentation-team 
+/src/pages/_document.tsx @aws-amplify/documentation-team 
+/src/pages/404.tsx @aws-amplify/documentation-team
+/src/pages/index.tsx @aws-amplify/documentation-team
+/src/pages/**/index.tsx @aws-amplify/documentation-team
+/src/public @aws-amplify/documentation-team 
+/src/styles @aws-amplify/documentation-team
+/src/themes @aws-amplify/documentation-team 
+/src/utils @aws-amplify/documentation-team
+/tasks @aws-amplify/documentation-team
+.github @aws-amplify/documentation-team
+
+#Protected Content
+/src/protected @aws-amplify/amplify-documentation-admins

@@ -1,0 +1,43 @@
+import { getCustomStaticPath } from '@/utils/getCustomStaticPath';
+
+export const meta = {
+  title: 'Connect to AWS resources',
+  description: 'You can use Amplify client libraries to connect directly to your AWS resources',
+  platforms: [
+    'android',
+    'angular',
+    'flutter',
+    'javascript',
+    'nextjs',
+    'react',
+    'react-native',
+    'swift',
+    'vue'
+  ]
+};
+
+export async function getStaticPaths() {
+  return getCustomStaticPath(meta.platforms);
+}
+
+export function getStaticProps(context) {
+  return {
+    props: {
+      platform: context.params.platform,
+      meta
+    }
+  };
+}
+
+Amplify client libraries can be used **independently** without the Amplify backend workflow. If you have AWS resources provisioned with CDK, Terraform, CloudFormation, or the AWS Console, you can connect Amplify libraries directly to those resources.
+
+This gives you the full power of Amplify's client APIs — authentication flows, data queries, file management, and more — while keeping complete control over your infrastructure.
+
+You can configure the libraries in two ways:
+
+- **Manual `amplify_outputs.json`** — Create the configuration file with your resource details
+- **Programmatic configuration** — Build the configuration in code (ideal for testing and environment switching)
+
+Both approaches support all Amplify services: **Auth**, **Data**, **Storage**, **Analytics**, **Geo**, and **Notifications**.
+
+For the full guide with platform-specific code examples for each service, see [Connect to existing AWS resources](/[platform]/frontend/connect-to-existing-resources/).

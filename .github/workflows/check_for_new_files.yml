@@ -1,0 +1,39 @@
+name: Validate CODEOWNERS
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  checkIfCodeownersUpdateNeeded:
+    permissions:
+      pull-requests: write # Used to add comment to PR
+    name: Check if CODEOWNERS needs to be updated
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Get count of added files
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        id: set-added-files-count
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            const { getAddedFiles } = require('./.github/workflows/scripts/check_for_new_files.js');
+            return await getAddedFiles({github, context, core});
+      - name: Set yarn Berry
+        uses: ./.github/actions/set_yarn_berry
+      - name: Install npm package ignore
+        if: ${{ steps.set-added-files-count.outputs.result > 0 }}
+        run: yarn add ignore@5.2.4 -W # help verify CODEOWNERS
+      - name: Check file against CODEOWNERS
+        if: ${{ steps.set-added-files-count.outputs.result > 0 }}
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          CURRENT_BRANCH: ${{ github.head_ref }}
+          CURRENT_REPO: ${{ github.repository }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const ignore = require('ignore');
+            const { validateCodeowners } = require('./.github/workflows/scripts/check_for_new_files.js');
+            await validateCodeowners({github, context, fetch, ignore});

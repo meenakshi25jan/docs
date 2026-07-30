@@ -2,29 +2,18 @@ The Amazon Kinesis analytics provider allows you to send analytics data to an [A
 
 ## Installation and Configuration
 
-Register the *AWSKinesisProvider* with the Analytics category: 
-
-```javascript
-import { Analytics, AWSKinesisProvider } from 'aws-amplify';
-Analytics.addPluggable(new AWSKinesisProvider());
-```
-
-If you did not use the CLI, ensure you have <a href="https://docs.aws.amazon.com/streams/latest/dev/learning-kinesis-module-one-iam.html" target="_blank">setup IAM permissions</a> for `PutRecords`.
+If you did not use the CLI, ensure you have [setup IAM permissions](https://docs.aws.amazon.com/streams/latest/dev/learning-kinesis-module-one-iam.html) for `kinesis:PutRecords`.
 
 Example IAM policy for Amazon Kinesis:
-```json
+
+```javascript
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "kinesis:PutRecord",
-                "kinesis:PutRecords"
-            ],
-            "Resource": "*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": "kinesis:PutRecords",
+    "Resource": "arn:aws:kinesis:<Region>:<AccountId>:stream/<StreamName>" // replace the template fields
+  }]
 }
 ```
 
@@ -34,24 +23,30 @@ Configure Kinesis:
 
 ```javascript
 // Configure the plugin after adding it to the Analytics module
-Analytics.configure({
-    AWSKinesis: {
+import { Amplify } from 'aws-amplify';
+import { parseAmplifyConfig } from "aws-amplify/utils";
+import amplifyconfig from './amplifyconfiguration.json';
 
-        // OPTIONAL -  Amazon Kinesis service region
-        region: 'XX-XXXX-X',
-        
-        // OPTIONAL - The buffer size for events in number of items.
-        bufferSize: 1000,
-        
-        // OPTIONAL - The number of events to be deleted from the buffer when flushed.
-        flushSize: 100,
-        
-        // OPTIONAL - The interval in milliseconds to perform a buffer check and flush if necessary.
-        flushInterval: 5000, // 5s
-        
-        // OPTIONAL - The limit for failed recording retries.
-        resendLimit: 5
-    } 
+Amplify.configure({
+  ...parseAmplifyConfig(amplifyconfig),
+  Analytics: {
+    Kinesis: {
+      // REQUIRED -  Amazon Kinesis service region
+      region: 'us-east-1',
+
+      // OPTIONAL - The buffer size for events in number of items.
+      bufferSize: 1000,
+
+      // OPTIONAL - The number of events to be deleted from the buffer when flushed.
+      flushSize: 100,
+
+      // OPTIONAL - The interval in milliseconds to perform a buffer check and flush if necessary.
+      flushInterval: 5000, // 5s
+
+      // OPTIONAL - The limit for failed recording retries.
+      resendLimit: 5
+    }
+  }
 });
 ```
 
@@ -60,12 +55,22 @@ Analytics.configure({
 You can send a data to a Kinesis stream with the standard `record()` method:
 
 ```javascript
-Analytics.record({
-    data: { 
-        // The data blob to put into the record
-    },
-    // OPTIONAL
-    partitionKey: 'myPartitionKey', 
-    streamName: 'myKinesisStream'
-}, 'AWSKinesis');
+import { record } from 'aws-amplify/analytics/kinesis';
+
+record({
+  data: {
+    // The data blob to put into the record
+  },
+  partitionKey: 'myPartitionKey',
+  streamName: 'myKinesisStream'
+});
+```
+
+## Flush events
+The recorded events are saved in a buffer and sent to the remote server periodically *(You can tune it with the `flushInterval` option)*. If needed, you have the option to manually clear all the events from the buffer by using the 'flushEvents' API.
+
+```javascript
+import { flushEvents } from 'aws-amplify/analytics/kinesis';
+
+flushEvents();
 ```

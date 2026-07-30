@@ -1,0 +1,50 @@
+name: Accessibility Scan
+on:
+  pull_request:
+    branches: [main, pre-prod/main]
+    types: [opened, synchronize]
+env:
+  BUILD_DIR: 'client/www/next-build'
+jobs:
+  accessibility:
+    name: Runs accessibility scan on changed pages
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Setup Node.js 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20.x
+      - name: Set Yarn Berry
+        uses: ./.github/actions/set_yarn_berry
+      - name: Install dependencies
+        run: yarn
+      - name: Install Chrome for Puppeteer
+        run: npx puppeteer browsers install chrome
+      - name: Build
+        run: yarn build
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+      - name: Get changed/new pages to run accessibility tests on
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        id: pages-to-a11y-test
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { getChangedPages } = require('./.github/workflows/scripts/check_for_changed_pages.js');
+            const buildDir = process.env.BUILD_DIR;
+            return getChangedPages({github, context, buildDir});
+      - name: Run site
+        run: |
+          python -m http.server 3000 -d ${{ env.BUILD_DIR }} &
+          sleep 5
+      - name: Run accessibility tests on changed/new MDX pages
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        id: axeResults
+        with:
+          result-encoding: string
+          script: |
+            const { runAccessibilityScan } = require('./.github/workflows/scripts/run_accessibility_scan.js');
+            const pages = ${{ steps.pages-to-a11y-test.outputs.result }}
+            return await runAccessibilityScan(pages)

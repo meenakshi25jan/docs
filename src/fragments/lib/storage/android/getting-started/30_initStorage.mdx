@@ -6,6 +6,13 @@ Add the following code to your `onCreate()` method in your application class:
 <Block name="Java">
 
 ```java
+import android.util.Log;
+import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin;
+import com.amplifyframework.core.Amplify;
+import com.amplifyframework.storage.s3.AWSS3StoragePlugin;
+```
+
+```java
 Amplify.addPlugin(new AWSCognitoAuthPlugin());
 Amplify.addPlugin(new AWSS3StoragePlugin());
 ```
@@ -34,6 +41,13 @@ public class MyAmplifyApp extends Application {
 
 </Block>
 <Block name="Kotlin">
+
+```kotlin
+import android.util.Log
+import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin
+import com.amplifyframework.core.Amplify
+import com.amplifyframework.storage.s3.AWSS3StoragePlugin
+```
 
 ```kotlin
 Amplify.addPlugin(AWSCognitoAuthPlugin())
@@ -65,6 +79,13 @@ class MyAmplifyApp : Application() {
 <Block name="RxJava">
 
 ```java
+import android.util.Log;
+import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin;
+import com.amplifyframework.rx.RxAmplify;
+import com.amplifyframework.storage.s3.AWSS3StoragePlugin;
+```
+
+```java
 RxAmplify.addPlugin(new AWSCognitoAuthPlugin());
 RxAmplify.addPlugin(new AWSS3StoragePlugin());
 ```
@@ -94,4 +115,4 @@ public class MyAmplifyApp extends Application {
 </Block>
 </BlockSwitcher>
 
-Note that because the storage category requires auth, you will need to either configure [guest access](/lib/auth/guest_access) or [sign in a user](/lib/auth/signin) before using features in the storage category.
+Note that because the storage category requires auth, you will need to either configure [guest access](/gen1/[platform]/build-a-backend/auth/enable-guest-access/) or [sign in a user](/gen1/[platform]/build-a-backend/auth/enable-sign-in/) before using features in the storage category.

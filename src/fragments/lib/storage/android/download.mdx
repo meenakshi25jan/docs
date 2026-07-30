@@ -1,6 +1,70 @@
-### Download to file
+## Download to file
 
-If you uploaded the data using the key `ExampleKey`, you can retrieve the data using `Amplify.Storage.downloadFile`.
+{/* TODO Rewrite monitor progress of download for iOS/Flutter/Android? */}
+
+### With StoragePath
+
+<BlockSwitcher>
+<Block name="Java">
+
+```java
+Amplify.Storage.downloadFile(
+        StoragePath.fromString("public/example"),
+        new File(getApplicationContext().getFilesDir() + "/download.txt"),
+        result -> Log.i("MyAmplifyApp", "Successfully downloaded: " + result.getFile().getName()),
+        error -> Log.e("MyAmplifyApp",  "Download Failure", error)
+);
+```
+
+</Block>
+<Block name="Kotlin - Callbacks">
+
+```kotlin
+val file = File("${applicationContext.filesDir}/download.txt")
+Amplify.Storage.downloadFile(StoragePath.fromString("public/example"), file,
+    { Log.i("MyAmplifyApp", "Successfully downloaded: ${it.file.name}") },
+    { Log.e("MyAmplifyApp",  "Download Failure", it) }
+)
+```
+
+</Block>
+<Block name="Kotlin - Coroutines">
+
+```kotlin
+try {
+    val file = File("${applicationContext.filesDir}/download.txt")
+    val download = Amplify.Storage.downloadFile(StoragePath.fromString("public/example"), file)
+    try {
+        val fileName = download.result().file.name
+        Log.i("MyAmplifyApp", "Successfully downloaded: $fileName")
+    } catch (error: StorageException) {
+        Log.e("MyAmplifyApp", "Download Failure", error)
+    }
+}
+```
+
+</Block>
+<Block name="RxJava">
+
+```java
+RxProgressAwareSingleOperation<StorageDownloadFileResult> download =
+        RxAmplify.Storage.downloadFile(
+            StoragePath.fromString("public/example"),
+            new File(getApplicationContext().getFilesDir() + "/download.txt"
+        );
+
+download
+    .observeResult()
+    .subscribe(
+        result -> Log.i("MyAmplifyApp", "Successfully downloaded: " + result.getFile().getName()),
+        error -> Log.e("MyAmplifyApp",  "Download Failure", error)
+    );
+```
+
+</Block>
+</BlockSwitcher>
+
+#### With Key (Deprecated)
 
 <BlockSwitcher>
 <Block name="Java">
@@ -26,7 +90,7 @@ Amplify.Storage.downloadFile("ExampleKey", file,
 ```
 
 </Block>
-<Block name="Kotlin - Coroutines (Beta)">
+<Block name="Kotlin - Coroutines">
 
 ```kotlin
 try {
@@ -62,9 +126,78 @@ download
 </Block>
 </BlockSwitcher>
 
-### Track download progress
+## Track download progress
 
 To track progress of the download, use the `downloadFile` API that includes a progress listener callback.
+
+### With StoragePath
+
+<BlockSwitcher>
+<Block name="Java">
+
+```java
+Amplify.Storage.downloadFile(
+        StoragePath.fromString("public/example"),
+        new File(getApplicationContext().getFilesDir() + "/download.txt"),
+        StorageDownloadFileOptions.defaultInstance(),
+        progress -> Log.i("MyAmplifyApp", "Fraction completed: " + progress.getFractionCompleted()),
+        result -> Log.i("MyAmplifyApp", "Successfully downloaded: " + result.getFile().getName()),
+        error -> Log.e("MyAmplifyApp",  "Download Failure", error)
+);
+```
+
+</Block>
+<Block name="Kotlin - Callbacks">
+
+```kotlin
+val file = File("${applicationContext.filesDir}/download.txt")
+val options = StorageDownloadFileOptions.defaultInstance()
+Amplify.Storage.downloadFile(StoragePath.fromString("public/example"), file, options,
+    { Log.i("MyAmplifyApp", "Fraction completed: ${it.fractionCompleted}") },
+    { Log.i("MyAmplifyApp", "Successfully downloaded: ${it.file.name}") },
+    { Log.e("MyAmplifyApp", "Download Failure", it) }
+)
+```
+
+</Block>
+<Block name="Kotlin - Coroutines">
+
+```kotlin
+val file = File("${applicationContext.filesDir}/download.txt")
+val options = StorageDownloadFileOptions.defaultInstance()
+val download = Amplify.Storage.downloadFile(StoragePath.fromString("public/example"), file, options)
+val progressJob = activityScope.async {
+    download.progress().collect { progress ->
+        Log.i("MyAmplifyApp", "Fraction completed: ${progress.fractionCompleted}")
+    }
+}
+try {
+    val fileName = download.result().file.name
+    Log.i("MyAmplifyApp", "Successfully downloaded: $fileName")
+} catch (error: StorageException) {
+    Log.e("MyAmplifyApp", "Download Failure", error)
+}
+progressJob.cancel()
+```
+
+</Block>
+<Block name="RxJava">
+
+```java
+RxProgressAwareSingleOperation<StorageDownloadFileResult> download =
+        RxAmplify.Storage.downloadFile(StoragePath.fromString("public/example"), localFile);
+
+download
+    .observeProgress()
+    .subscribe(
+      progress -> Log.i("MyAmplifyApp", progress.getFractionCompleted())
+    );
+```
+
+</Block>
+</BlockSwitcher>
+
+#### With Key (Deprecated)
 
 <BlockSwitcher>
 <Block name="Java">
@@ -94,7 +227,7 @@ Amplify.Storage.downloadFile("ExampleKey", file, options,
 ```
 
 </Block>
-<Block name="Kotlin - Coroutines (Beta)">
+<Block name="Kotlin - Coroutines">
 
 ```kotlin
 val file = File("${applicationContext.filesDir}/download.txt")
@@ -131,9 +264,60 @@ download
 </Block>
 </BlockSwitcher>
 
-### Generate a download URL
+## Generate a download URL
 
 You can also retrieve a URL for the object in storage:
+
+### With StoragePath
+
+<BlockSwitcher>
+<Block name="Java">
+
+```java
+Amplify.Storage.getUrl(
+    StoragePath.fromString("public/example"),
+    result -> Log.i("MyAmplifyApp", "Successfully generated: " + result.getUrl()),
+    error -> Log.e("MyAmplifyApp", "URL generation failure", error)
+);
+```
+
+</Block>
+<Block name="Kotlin - Callbacks">
+
+```kotlin
+Amplify.Storage.getUrl(
+    StoragePath.fromString("public/example"),
+    { Log.i("MyAmplifyApp", "Successfully generated: ${it.url}") },
+    { Log.e("MyAmplifyApp", "URL generation failure", it) }
+)
+```
+
+</Block>
+<Block name="Kotlin - Coroutines">
+
+```kotlin
+try {
+    val url = Amplify.Storage.getUrl(StoragePath.fromString("public/example")).url
+    Log.i("MyAmplifyApp", "Successfully generated: $url")
+} catch (error: StorageException) {
+    Log.e("MyAmplifyApp", "URL generation failure", error)
+}
+```
+
+</Block>
+<Block name="RxJava">
+
+```java
+RxAmplify.Storage.getUrl(StoragePath.fromString("public/example")).subscribe(
+    result -> Log.i("MyAmplifyApp", "Successfully generated: " + result.getUrl()),
+    error -> Log.e("MyAmplifyApp", "URL generation failure", error)
+);
+```
+
+</Block>
+</BlockSwitcher>
+
+#### With Key (Deprecated)
 
 <BlockSwitcher>
 <Block name="Java">
@@ -152,13 +336,13 @@ Amplify.Storage.getUrl(
 ```kotlin
 Amplify.Storage.getUrl(
     "ExampleKey",
-    { Log.i("MyAmplifyApp", "Successfully generated: ${it.url}") }
+    { Log.i("MyAmplifyApp", "Successfully generated: ${it.url}") },
     { Log.e("MyAmplifyApp", "URL generation failure", it) }
 )
 ```
 
 </Block>
-<Block name="Kotlin - Coroutines (Beta)">
+<Block name="Kotlin - Coroutines">
 
 ```kotlin
 try {
