@@ -262,4 +262,12 @@ export const api = {
     auditLog: (limit = 50) =>
       request(`/governance/audit-log?limit=${limit}`),
   },
+  analytics: {
+    overview: () => request('/analytics/overview'),
+    progress: () => request('/analytics/progress'),
+    governance: () => request('/analytics/governance'),
+    curriculum: () => request('/analytics/curriculum'),
+    knowledge: () => request('/analytics/knowledge'),
+    insights: () => request('/analytics/insights'),
+  },
 };

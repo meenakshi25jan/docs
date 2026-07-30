@@ -1491,6 +1491,103 @@ Verify after a voice lesson:
 
 ---
 
+## 23. Analytics & Insights v1
+
+Analytics & Insights v1 aggregates existing learner data into progress trends, governance quality, curriculum activity, knowledge grounding metrics, and deterministic learner insights — **no new database tables**.
+
+### Purpose
+
+Transform platform events, progress snapshots, governance scores, curriculum completions, and message metadata into read-only analytics for the student dashboard and API consumers.
+
+### Data sources (existing tables only)
+
+| Source | Analytics use |
+|--------|----------------|
+| `progress_snapshots` | Skill + CEFR + confidence time series |
+| `voice_analyses` | Speaking, pronunciation, fluency trends |
+| `assessment_results` | Assessment history (future cross-assessment) |
+| `lesson_completions` | Completion velocity, skill distribution |
+| `revision_schedule` | Pending / completed / overdue revisions |
+| `conversation_messages.metadata` | `governance`, `knowledge_grounding`, `curriculum_recommendation` |
+| `learner_memories` | Governance learning events (supplement) |
+| Student Intelligence `get_summary` | Insights wrapper (contracts unchanged) |
+
+### Architecture
+
+```
+Existing DB + message metadata
+  → analytics_repository (read-only SQL)
+  → AnalyticsService (deterministic aggregation)
+  → GET /api/v1/analytics/*
+  → Student dashboard (line chart + insights panel)
+```
+
+### Analytics APIs (JWT, read-only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/analytics/overview` | Scorecard + key metrics (30d) |
+| GET | `/analytics/progress` | Skill / CEFR / confidence trends |
+| GET | `/analytics/governance` | Governance score averages + warnings |
+| GET | `/analytics/curriculum` | Completions, revisions, velocity |
+| GET | `/analytics/knowledge` | Grounding rate, fallback, sources |
+| GET | `/analytics/insights` | Deterministic learner insight cards |
+
+### Dashboard widgets
+
+Student dashboard (`/dashboard/student`) adds:
+
+- Grammar progress line chart (`api.analytics.progress`)
+- Learning insights panel (`api.analytics.insights`)
+- Optional governance quality card (`api.analytics.governance`)
+- Optional curriculum activity summary (`api.analytics.curriculum`)
+
+Existing SI summary, radar chart, and curriculum recommendation cards are preserved.
+
+### Insight generation (deterministic v1)
+
+No AI — rules based on:
+
+- Weakest skill (Student Intelligence)
+- Confidence improving (progress snapshots)
+- Recurring mistakes (`error_tracking`)
+- Governance warnings (e.g. `grounding_fallback_used`)
+- Pending revisions (curriculum analytics)
+
+### Empty-state behavior
+
+All endpoints return safe empty responses (`has_data: false`) when no learner profile or no historical data. Dashboard shows friendly empty messages; requests never fail due to missing analytics.
+
+### Mock mode
+
+Analytics uses SQL + metadata only — no OpenAI calls in the analytics layer.
+
+### Smoke tests
+
+```bash
+# After login + voice lesson activity
+curl "https://ai-english-teacher-api.onrender.com/api/v1/analytics/overview" \
+  -H "Authorization: Bearer $TOKEN"
+
+curl "https://ai-english-teacher-api.onrender.com/api/v1/analytics/progress" \
+  -H "Authorization: Bearer $TOKEN"
+
+curl "https://ai-english-teacher-api.onrender.com/api/v1/analytics/insights" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Open student dashboard — verify trend chart and insights panel
+```
+
+### Known limitations
+
+- No cohort / tenant analytics (v2)
+- No `analytics_snapshots` materialized table
+- Fluency/pronunciation trends use `voice_analyses` (not `progress_snapshots`)
+- Governance history depends on message metadata (post–Phase 6 turns)
+- Teacher/admin dashboards remain stubs
+
+---
+
 ## Related docs
 
 | Doc | Path |
