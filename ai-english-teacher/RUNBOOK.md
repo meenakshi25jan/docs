@@ -9,7 +9,7 @@
 | API docs | https://ai-english-teacher-api.onrender.com/docs |
 | Health | https://ai-english-teacher-api.onrender.com/health |
 
-**Deploy branch:** `cursor/reliability-observability-v1-f37f` (Phases 0–11) · merge to `main` for long-term · voice-first: `cursor/voice-first-redesign-f37f`  
+**Deploy branch:** `main` (Phases 0–11) · feature preview: `cursor/reliability-observability-v1-f37f`  
 **Repo:** `meenakshi25jan/docs` → folder `ai-english-teacher/`  
 **Platform mode:** Voice-first conversational teacher (PRD v2) — unified voice turns, teaching personas, lesson reports
 
