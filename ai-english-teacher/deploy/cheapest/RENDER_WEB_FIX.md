@@ -16,6 +16,36 @@ Do **not** use:
 
 ---
 
+## If you see "Verify Settings" with Docker + `backend/Dockerfile`
+
+**Wrong (causes stale builds / 404 on new routes):**
+
+| Field | Bad value (from dashboard) |
+|-------|----------------------------|
+| Root Directory | `ai-english-teacher/frontend` |
+| Dockerfile Path | `backend/Dockerfile` or `... $ backend/Dockerfile` |
+| Runtime | Docker |
+
+The **web** service must **not** use `backend/Dockerfile` (that is the Python API image).
+
+**Fix — switch to Node (recommended, matches `render.yaml`):**
+
+1. Settings → **Runtime** → **Node** (not Docker)
+2. Clear/remove Docker Dockerfile path fields
+3. Set Build & Deploy as in Step 2 below
+4. Save → **Manual Deploy** → **Clear build cache & deploy**
+
+**Alternative — Docker only if you insist:**
+
+| Field | Value |
+|-------|--------|
+| Root Directory | `ai-english-teacher/frontend` |
+| Dockerfile Path | `./Dockerfile` (frontend Dockerfile, **not** backend) |
+| Docker Build Context | `.` |
+| Do **not** include `$` or `backend/` in paths |
+
+---
+
 ## Step 2 — Settings → Build & Deploy
 
 Copy these values **exactly**:
