@@ -270,4 +270,19 @@ export const api = {
     knowledge: () => request('/analytics/knowledge'),
     insights: () => request('/analytics/insights'),
   },
+  operations: {
+    overview: () => request('/operations/overview'),
+    health: () => request('/operations/health'),
+    tenant: () => request('/operations/tenant'),
+    updateTenantSettings: (settings: Record<string, unknown>) =>
+      request('/operations/tenant/settings', { method: 'PATCH', body: { settings } }),
+    featureFlags: () => request('/operations/feature-flags'),
+    users: () => request('/operations/users'),
+    teacherRoster: () => request('/operations/teacher/roster'),
+    teacherLearnerSummary: (learnerId: string) =>
+      request(`/operations/teacher/learners/${learnerId}/summary`),
+    adminSummary: () => request('/operations/admin/summary'),
+    learnerReports: (learnerId: string) =>
+      request(`/operations/reports/learner/${learnerId}`),
+  },
 };

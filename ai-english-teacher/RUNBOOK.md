@@ -1588,6 +1588,126 @@ curl "https://ai-english-teacher-api.onrender.com/api/v1/analytics/insights" \
 
 ---
 
+## 24. Enterprise Operations v1
+
+Enterprise Operations v1 adds tenant-scoped teacher and admin workflows, operational health, tenant settings/feature flags (JSONB), and report summaries — **no new database tables**.
+
+### Purpose
+
+Turn the multi-tenant skeleton into an operable SaaS foundation: real teacher roster, learner summaries, admin tenant metrics, composite health, and RBAC-protected `/operations/*` APIs.
+
+### Architecture
+
+```
+tenants, users, learner_profiles, lesson_completions, reports,
+conversation_messages.metadata (governance, knowledge_grounding)
+  → operations_repository (tenant-scoped reads + settings PATCH)
+  → OperationsService
+  → GET/PATCH /api/v1/operations/*
+  → Teacher / Admin dashboards
+```
+
+Reuses `AnalyticsService` and `get_summary` (read-only) without changing intelligence contracts.
+
+### Operations APIs
+
+| Method | Path | RBAC |
+|--------|------|------|
+| GET | `/operations/overview` | admin, super_admin |
+| GET | `/operations/health` | admin, super_admin |
+| GET | `/operations/tenant` | admin, super_admin |
+| PATCH | `/operations/tenant/settings` | admin, super_admin |
+| GET | `/operations/feature-flags` | teacher, admin, super_admin |
+| GET | `/operations/users` | admin, super_admin |
+| GET | `/operations/teacher/roster` | teacher, admin, super_admin |
+| GET | `/operations/teacher/learners/{id}/summary` | teacher, admin, super_admin |
+| GET | `/operations/admin/summary` | admin, super_admin |
+| GET | `/operations/reports/learner/{id}` | teacher, admin, super_admin |
+
+### RBAC matrix
+
+| Role | Roster | Admin summary | Tenant PATCH | Feature flags |
+|------|--------|---------------|--------------|---------------|
+| student | 403 | 403 | 403 | 403 |
+| teacher | ✅ | 403 | 403 | ✅ |
+| admin | ✅ | ✅ | ✅ | ✅ |
+| super_admin | ✅ | ✅ | ✅ | ✅ |
+
+### Teacher dashboard
+
+`/dashboard/teacher` calls `GET /operations/teacher/roster`:
+
+- Class size, active learners (7d), needs attention count
+- Roster table: CEFR, weakest skill, lessons (30d), governance score, status
+
+### Admin dashboard
+
+`/dashboard/admin` calls `GET /operations/admin/summary` + `GET /operations/health`:
+
+- Tenant-scoped user/learner counts (not global)
+- Lessons completed (30d), governance avg, warnings, grounding fallback rate
+- Operational health checks (DB, AI, auth)
+
+### Tenant settings & feature flags
+
+Stored in `tenants.settings` JSONB:
+
+```json
+{
+  "features": {
+    "voice_enabled": true,
+    "governance_metadata": true,
+    "curriculum_recommendations": true,
+    "knowledge_grounding": true,
+    "analytics_dashboard": true
+  },
+  "limits": { "max_learners": 100 }
+}
+```
+
+Limits return warnings only in v1 (not enforced).
+
+### Login redirect
+
+| Role | Dashboard |
+|------|-----------|
+| student | `/dashboard/student` |
+| teacher | `/dashboard/teacher` |
+| admin / super_admin | `/dashboard/admin` |
+
+### Smoke tests
+
+```bash
+# Teacher roster
+curl "https://ai-english-teacher-api.onrender.com/api/v1/operations/teacher/roster" \
+  -H "Authorization: Bearer $TEACHER_TOKEN"
+
+# Admin summary
+curl "https://ai-english-teacher-api.onrender.com/api/v1/operations/admin/summary" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Health
+curl "https://ai-english-teacher-api.onrender.com/api/v1/operations/health" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Feature flags
+curl "https://ai-english-teacher-api.onrender.com/api/v1/operations/feature-flags" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Student should get 403 on teacher roster
+```
+
+### Known limitations
+
+- No class/cohort model (teacher sees all tenant learners)
+- No cross-tenant super_admin console
+- No usage metering persistence
+- No PDF report export
+- RLS gaps unchanged (separate security hardening phase)
+- Role assignment still manual DB (no promote API in v1)
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1606,4 +1726,4 @@ curl "https://ai-english-teacher-api.onrender.com/api/v1/analytics/insights" \
 
 ---
 
-*Last updated: AI Governance v1 · branch `cursor/knowledge-intelligence-v1-d164` · stack: Render + Neon + Next.js proxy*
+*Last updated: Enterprise Operations v1 · branch `cursor/enterprise-operations-v1-f37f` · stack: Render + Neon + Next.js proxy*
