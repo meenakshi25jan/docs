@@ -22,9 +22,19 @@ function LoginForm() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.auth.login(form) as { tokens: { access_token: string; refresh_token: string } };
+      const res = await api.auth.login(form) as {
+        tokens: { access_token: string; refresh_token: string };
+        user?: { role?: string };
+      };
       saveTokens(res.tokens.access_token, res.tokens.refresh_token);
-      window.location.href = '/dashboard/student';
+      const role = res.user?.role;
+      if (role === 'teacher') {
+        window.location.href = '/dashboard/teacher';
+      } else if (role === 'admin' || role === 'super_admin') {
+        window.location.href = '/dashboard/admin';
+      } else {
+        window.location.href = '/dashboard/student';
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

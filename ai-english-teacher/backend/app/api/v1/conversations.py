@@ -13,6 +13,10 @@ from app.core.database import get_db
 from app.core.security import TokenPayload, get_current_user
 from app.models import Conversation, ConversationMessage, LearnerProfile
 from app.schemas import ConversationCreate, ConversationResponse, MessageCreate, MessageResponse, VoiceTurnRequest
+from app.services.security_service import (
+    learner_profile_for_resource,
+    verify_conversation_access,
+)
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -77,10 +81,9 @@ async def send_message(
     conv = await db.scalar(
         select(Conversation).options(selectinload(Conversation.messages)).where(Conversation.id == conversation_id)
     )
-    if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    conv = await verify_conversation_access(db, user, conv)
+    learner = await learner_profile_for_resource(db, user, conv.learner_id)
 
-    learner = await _get_learner(user, db)
     user_msg = ConversationMessage(conversation_id=conv.id, role="user", content=req.content)
     db.add(user_msg)
 
@@ -129,10 +132,9 @@ async def voice_turn_in_conversation(
     conv = await db.scalar(
         select(Conversation).options(selectinload(Conversation.messages)).where(Conversation.id == conversation_id)
     )
-    if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    conv = await verify_conversation_access(db, user, conv)
+    learner = await learner_profile_for_resource(db, user, conv.learner_id)
 
-    learner = await _get_learner(user, db)
     if not req.transcript and not req.audio_base64:
         raise HTTPException(status_code=400, detail="Provide transcript or audio_base64")
 
@@ -212,10 +214,8 @@ async def get_lesson_report(
     db: AsyncSession = Depends(get_db),
 ):
     conv = await db.scalar(select(Conversation).where(Conversation.id == conversation_id))
-    if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    learner = await _get_learner(user, db)
+    conv = await verify_conversation_access(db, user, conv)
+    learner = await learner_profile_for_resource(db, user, conv.learner_id)
     persona_id = (conv.context or {}).get("persona_id")
 
     report = await generate_lesson_report(

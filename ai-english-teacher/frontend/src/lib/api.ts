@@ -79,6 +79,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}, retrie
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Request failed' }));
     const detail = error.detail;
+    if (res.status === 403) {
+      throw new Error(
+        typeof detail === 'string' ? detail : 'You do not have permission for this action.'
+      );
+    }
     const message = typeof detail === 'string'
       ? detail
       : Array.isArray(detail)
@@ -269,5 +274,20 @@ export const api = {
     curriculum: () => request('/analytics/curriculum'),
     knowledge: () => request('/analytics/knowledge'),
     insights: () => request('/analytics/insights'),
+  },
+  operations: {
+    overview: () => request('/operations/overview'),
+    health: () => request('/operations/health'),
+    tenant: () => request('/operations/tenant'),
+    updateTenantSettings: (settings: Record<string, unknown>) =>
+      request('/operations/tenant/settings', { method: 'PATCH', body: { settings } }),
+    featureFlags: () => request('/operations/feature-flags'),
+    users: () => request('/operations/users'),
+    teacherRoster: () => request('/operations/teacher/roster'),
+    teacherLearnerSummary: (learnerId: string) =>
+      request(`/operations/teacher/learners/${learnerId}/summary`),
+    adminSummary: () => request('/operations/admin/summary'),
+    learnerReports: (learnerId: string) =>
+      request(`/operations/reports/learner/${learnerId}`),
   },
 };

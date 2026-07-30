@@ -99,6 +99,68 @@ async def client(mock_db_session, mock_user, mock_learner):
 
 
 @pytest.fixture
+def mock_teacher(tenant_id, user_id):
+    return TokenPayload(
+        sub=str(user_id),
+        tenant_id=str(tenant_id),
+        role="teacher",
+        email="teacher@example.com",
+    )
+
+
+@pytest.fixture
+def mock_admin(tenant_id, user_id):
+    return TokenPayload(
+        sub=str(user_id),
+        tenant_id=str(tenant_id),
+        role="admin",
+        email="admin@example.com",
+    )
+
+
+@pytest.fixture
+async def teacher_client(mock_db_session, mock_teacher, mock_learner):
+    async def override_get_db() -> AsyncGenerator[AsyncMock, None]:
+        yield mock_db_session
+
+    async def override_get_current_user() -> TokenPayload:
+        return mock_teacher
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ac.mock_db = mock_db_session
+        ac.mock_user = mock_teacher
+        ac.mock_learner = mock_learner
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def admin_client(mock_db_session, mock_admin, mock_learner):
+    async def override_get_db() -> AsyncGenerator[AsyncMock, None]:
+        yield mock_db_session
+
+    async def override_get_current_user() -> TokenPayload:
+        return mock_admin
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ac.mock_db = mock_db_session
+        ac.mock_user = mock_admin
+        ac.mock_learner = mock_learner
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 async def public_client():
     """Client without auth overrides — for public endpoints."""
     transport = ASGITransport(app=app)
