@@ -6,8 +6,11 @@ from uuid import UUID
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.database import get_db
+from app.models import User
 
 settings = get_settings()
 security = HTTPBearer()
@@ -60,15 +63,35 @@ class TokenPayload:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ) -> TokenPayload:
     payload = decode_token(credentials.credentials)
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+
+    token_user_id = UUID(payload["sub"])
+    token_tenant_id = str(payload["tenant_id"])
+    token_role = payload["role"]
+    token_email = payload["email"]
+
+    db_user = await db.get(User, token_user_id)
+    if not db_user or not db_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+
+    if str(db_user.tenant_id) != token_tenant_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    if db_user.role != token_role:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
     return TokenPayload(
-        sub=payload["sub"],
-        tenant_id=payload["tenant_id"],
-        role=payload["role"],
-        email=payload["email"],
+        sub=str(db_user.id),
+        tenant_id=str(db_user.tenant_id),
+        role=db_user.role,
+        email=db_user.email if db_user.email != token_email else token_email,
     )
 
 

@@ -1708,6 +1708,116 @@ curl "https://ai-english-teacher-api.onrender.com/api/v1/operations/feature-flag
 
 ---
 
+## 25. Security Hardening & RLS v1
+
+**Branch:** `cursor/security-hardening-v1-f37f`  
+**Migration:** `007_security_rls_hardening.sql`
+
+### Purpose
+
+Harden multi-tenant production security: close IDOR gaps, enforce JWT validation against the database, extend RLS coverage, and expose admin security diagnostics.
+
+### Threats addressed
+
+| Threat | Mitigation |
+|--------|------------|
+| Cross-learner IDOR (conversations, assessments) | Ownership checks via `security_service` |
+| Stale JWT role / tenant | DB-backed `get_current_user` |
+| Inactive users | Blocked at login and on each authenticated request |
+| Child-table RLS gaps | Migration 007 policies via parent tenant |
+| Unprotected voice/memory tables | RLS on `voice_analyses`, `learner_memories` |
+
+### IDOR fixes
+
+- `POST /conversations/{id}/messages`, `voice-turn`, `lesson-report` verify tenant + learner ownership
+- `POST /assessments/{id}/start|submit`, `GET /results` verify tenant + ownership
+- Students: own learner resources only (404 on violation to limit enumeration)
+- Teachers/admins: tenant-scoped learner access in v1 (no class assignments)
+
+### JWT hardening
+
+- `get_current_user` loads `users` row, checks `is_active`, `tenant_id`, and `role` against token
+- Login rejects inactive accounts
+- Refresh already checked `is_active` (unchanged)
+- Token shape unchanged (backward compatible)
+
+### RLS migration 007
+
+Enables or upgrades policies for:
+
+- `conversation_messages` (via `conversations.tenant_id`)
+- `assessment_results` (via `assessments.tenant_id`)
+- `voice_analyses`, `learner_memories` (direct `tenant_id`)
+- Legacy upgrades: `conversations`, `assessments`, `reports`, `progress_snapshots`, `error_tracking` (NULLIF + WITH CHECK)
+
+Apply on Neon:
+
+```bash
+psql "$DATABASE_URL" -f database/migrations/007_security_rls_hardening.sql
+```
+
+### Security diagnostics APIs (admin only)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/security/summary` | Overall security posture |
+| `GET /api/v1/security/rls` | Per-table RLS coverage |
+| `GET /api/v1/security/auth` | Auth hardening flags |
+| `GET /api/v1/security/authorization` | RBAC / ownership snapshot |
+
+RBAC: `admin` and `super_admin` only.
+
+### Authorization model (v1)
+
+| Role | Learner data |
+|------|----------------|
+| student | Own profile and resources only |
+| teacher | All learners in tenant |
+| admin | Tenant operations + security diagnostics |
+| super_admin | Bypass on role-gated routes |
+
+### Tenant isolation model
+
+1. JWT `tenant_id` validated against DB user
+2. `SET LOCAL app.tenant_id` per request (`get_db`)
+3. RLS policies on tenant and child tables
+4. API-layer ownership checks on high-risk ID routes
+
+### RBAC matrix (security routes)
+
+| Route | student | teacher | admin |
+|-------|---------|---------|-------|
+| `/security/*` | 403 | 403 | 200 |
+
+### Smoke tests
+
+```bash
+# Student IDOR — expect 404
+curl -X POST "$API/conversations/$OTHER_CONV_ID/messages" \
+  -H "Authorization: Bearer $STUDENT_TOKEN" \
+  -d '{"content":"hi"}'
+
+# Admin security summary
+curl "$API/security/summary" -H "Authorization: Bearer $ADMIN_TOKEN"
+curl "$API/security/rls" -H "Authorization: Bearer $ADMIN_TOKEN"
+curl "$API/security/auth" -H "Authorization: Bearer $ADMIN_TOKEN"
+curl "$API/security/authorization" -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Apply migration 007 on Neon before production RLS validation
+psql "$DATABASE_URL" -f database/migrations/007_security_rls_hardening.sql
+```
+
+### Known limitations
+
+- Teacher assignment / class cohort model deferred
+- MFA, password reset, SSO deferred
+- No persisted auth audit log or security event warehouse
+- `knowledge_chunks` RLS deferred (nullable global corpus)
+- Frontend route middleware deferred (API-enforced auth)
+- Some legacy rows may predate metadata policies
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1726,4 +1836,4 @@ curl "https://ai-english-teacher-api.onrender.com/api/v1/operations/feature-flag
 
 ---
 
-*Last updated: Enterprise Operations v1 · branch `cursor/enterprise-operations-v1-f37f` · stack: Render + Neon + Next.js proxy*
+*Last updated: Security Hardening & RLS v1 · branch `cursor/security-hardening-v1-f37f` · stack: Render + Neon + Next.js proxy*

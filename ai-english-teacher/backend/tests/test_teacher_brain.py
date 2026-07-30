@@ -241,6 +241,8 @@ class TestTeacherBrainAPI:
         conv.scenario = "everyday"
         conv.context = {}
         conv.messages = []
+        conv.tenant_id = client.mock_user.tenant_id
+        conv.learner_id = client.mock_learner.id
 
         mock_result = {
             "transcript": "I am go to market yesterday.",
@@ -257,7 +259,7 @@ class TestTeacherBrainAPI:
             "agent_output": {},
             "metadata": {},
         }
-        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner])
+        client.mock_db.scalar = AsyncMock(side_effect=[conv, client.mock_learner, client.mock_learner])
         with patch(
             "app.api.v1.conversations.run_voice_turn",
             return_value=mock_result,

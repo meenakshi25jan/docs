@@ -102,6 +102,9 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="Account is inactive")
+
     await set_tenant_context(db, str(user.tenant_id))
 
     user.last_login_at = datetime.now(timezone.utc)
