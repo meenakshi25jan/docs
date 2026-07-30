@@ -6,8 +6,8 @@ const API_PROXY_TARGET =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  // Monorepo: trace files from repo root so all app routes ship in production.
-  outputFileTracingRoot: path.join(__dirname, '../..'),
+  // Trace from ai-english-teacher/ (works on Render Node + Docker frontend builds).
+  outputFileTracingRoot: path.join(__dirname, '..'),
   // Repo root has unrelated .eslintrc (Amplify docs) — don't fail Render builds.
   eslint: {
     ignoreDuringBuilds: true,
