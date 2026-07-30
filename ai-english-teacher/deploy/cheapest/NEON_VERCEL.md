@@ -60,11 +60,11 @@ Your frontend URL will be something like:
 
 1. Go to https://dashboard.render.com/blueprints
 2. **New Blueprint Instance** → connect `meenakshi25jan/docs`
-3. When asked which blueprint file, use `ai-english-teacher/render-backend.yaml`
+3. When asked which blueprint file, use **`render.yaml`** at **repo root** (API + web)
    - Or create a **Web Service** manually:
      - Root: `ai-english-teacher/backend`
-     - Build: `pip install -r requirements.txt && mkdir -p migrations && cp -r ../database/migrations/* migrations/`
-     - Start: `chmod +x start.sh && ./start.sh`
+     - Build: `pip install -r requirements-render.txt && mkdir -p migrations && cp -r ../database/migrations/* migrations/ && chmod +x start.sh`
+     - Start: `./start.sh`
 4. Set environment variables:
 
 | Name | Value |

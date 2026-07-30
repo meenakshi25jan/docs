@@ -288,11 +288,9 @@ Migrations complete
 
 1. https://dashboard.render.com/blueprints → **New Blueprint Instance**
 2. Connect repo `meenakshi25jan/docs`
-3. Blueprint file: `ai-english-teacher/render-backend.yaml` (Docker) or `render.yaml`
+3. Blueprint file: **`render.yaml`** at **repo root** (not `render-backend.yaml`)
 4. Set `DATABASE_URL` when prompted
-5. Branch: `main` (stable) or `cursor/voice-first-redesign-f37f` (voice-first PRD v2 + Phase 0 stabilization)
-
-> **Deploy branch alignment:** `render.yaml` and `render-backend.yaml` default to branch `main`. Feature work (voice-first, cognitive orchestration, Phase 0 fixes) lives on `cursor/voice-first-redesign-f37f`. To test those changes on Render before merging to `main`, set **Branch** to `cursor/voice-first-redesign-f37f` on both API and Web services (Dashboard → Service → Settings → Branch), then Manual Deploy. After merge to `main`, switch services back to `main` for production.
+5. Branch: **`main`**
 
 **Option B — Manual Web Service**
 
@@ -312,7 +310,7 @@ Migrations complete
 | `DATABASE_URL` | Full Neon URL with `?sslmode=require` |
 | `JWT_SECRET_KEY` | Generate random string |
 | `CORS_ORIGINS` | `["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]` |
-| `SKIP_MIGRATIONS` | `true` |
+| `SKIP_MIGRATIONS` | `false` (migrations run via `start.sh` on deploy) |
 
 ### Step 4 — Deploy frontend on Render
 

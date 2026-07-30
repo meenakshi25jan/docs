@@ -21,7 +21,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 RUN mkdir -p ./public
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Next.js standalone with outputFileTracingRoot places server at frontend/server.js
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/frontend ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs

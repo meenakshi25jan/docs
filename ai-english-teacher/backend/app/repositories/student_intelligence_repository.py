@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models import Assessment, AssessmentResult, LearnerProfile, ProgressSnapshot, User
 from app.models.memory import ErrorTracking, VoiceAnalysis
+from app.repositories.optional_tables import query_optional_table
 
 
 async def get_learner_with_user(
@@ -51,32 +52,35 @@ async def get_voice_analysis_averages(
     learner_id: UUID,
     limit: int = 20,
 ) -> dict[str, float | None]:
-    rows = list(
-        await db.scalars(
-            select(VoiceAnalysis)
-            .where(VoiceAnalysis.learner_id == learner_id)
-            .order_by(VoiceAnalysis.created_at.desc())
-            .limit(limit)
+    async def _run() -> dict[str, float | None]:
+        rows = list(
+            await db.scalars(
+                select(VoiceAnalysis)
+                .where(VoiceAnalysis.learner_id == learner_id)
+                .order_by(VoiceAnalysis.created_at.desc())
+                .limit(limit)
+            )
         )
-    )
-    if not rows:
-        return {}
+        if not rows:
+            return {}
 
-    def avg(field: str) -> float | None:
-        values = [float(getattr(r, field) or 0) for r in rows if getattr(r, field) is not None]
-        if not values:
-            return None
-        return round(sum(values) / len(values), 1)
+        def avg(field: str) -> float | None:
+            values = [float(getattr(r, field) or 0) for r in rows if getattr(r, field) is not None]
+            if not values:
+                return None
+            return round(sum(values) / len(values), 1)
 
-    latest_at = rows[0].created_at
-    return {
-        "speaking": avg("overall_score"),
-        "pronunciation": avg("pronunciation_score"),
-        "fluency": avg("fluency_score"),
-        "grammar": avg("grammar_score"),
-        "vocabulary": avg("vocabulary_score"),
-        "last_updated": latest_at,
-    }
+        latest_at = rows[0].created_at
+        return {
+            "speaking": avg("overall_score"),
+            "pronunciation": avg("pronunciation_score"),
+            "fluency": avg("fluency_score"),
+            "grammar": avg("grammar_score"),
+            "vocabulary": avg("vocabulary_score"),
+            "last_updated": latest_at,
+        }
+
+    return await query_optional_table(db, _run, {})
 
 
 async def get_assessment_skill_scores(

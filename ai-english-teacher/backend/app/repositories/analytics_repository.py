@@ -13,6 +13,7 @@ from app.models import Assessment, Conversation, ConversationMessage, LearnerPro
 from app.models.curriculum import LessonCompletion, RevisionSchedule
 from app.models.memory import LearnerMemory, VoiceAnalysis
 from app.models.reports import Report
+from app.repositories.optional_tables import query_optional_table
 
 
 async def get_learner_by_user_id(db: AsyncSession, user_id: UUID) -> LearnerProfile | None:
@@ -56,13 +57,16 @@ async def get_lesson_completions(
     learner_id: UUID,
     limit: int = 100,
 ) -> list[LessonCompletion]:
-    result = await db.scalars(
-        select(LessonCompletion)
-        .where(LessonCompletion.learner_id == learner_id)
-        .order_by(LessonCompletion.completed_at.desc())
-        .limit(limit)
-    )
-    return list(result.all())
+    async def _run() -> list[LessonCompletion]:
+        result = await db.scalars(
+            select(LessonCompletion)
+            .where(LessonCompletion.learner_id == learner_id)
+            .order_by(LessonCompletion.completed_at.desc())
+            .limit(limit)
+        )
+        return list(result.all())
+
+    return await query_optional_table(db, _run, [])
 
 
 async def get_revision_schedule_rows(
@@ -70,12 +74,15 @@ async def get_revision_schedule_rows(
     *,
     learner_id: UUID,
 ) -> list[RevisionSchedule]:
-    result = await db.scalars(
-        select(RevisionSchedule)
-        .where(RevisionSchedule.learner_id == learner_id)
-        .order_by(RevisionSchedule.due_at.asc())
-    )
-    return list(result.all())
+    async def _run() -> list[RevisionSchedule]:
+        result = await db.scalars(
+            select(RevisionSchedule)
+            .where(RevisionSchedule.learner_id == learner_id)
+            .order_by(RevisionSchedule.due_at.asc())
+        )
+        return list(result.all())
+
+    return await query_optional_table(db, _run, [])
 
 
 async def get_voice_analyses(
@@ -84,13 +91,16 @@ async def get_voice_analyses(
     learner_id: UUID,
     limit: int = 90,
 ) -> list[VoiceAnalysis]:
-    result = await db.scalars(
-        select(VoiceAnalysis)
-        .where(VoiceAnalysis.learner_id == learner_id)
-        .order_by(VoiceAnalysis.created_at.asc())
-        .limit(limit)
-    )
-    return list(result.all())
+    async def _run() -> list[VoiceAnalysis]:
+        result = await db.scalars(
+            select(VoiceAnalysis)
+            .where(VoiceAnalysis.learner_id == learner_id)
+            .order_by(VoiceAnalysis.created_at.asc())
+            .limit(limit)
+        )
+        return list(result.all())
+
+    return await query_optional_table(db, _run, [])
 
 
 async def get_assistant_message_metadata(

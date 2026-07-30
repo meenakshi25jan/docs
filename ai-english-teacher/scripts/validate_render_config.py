@@ -21,7 +21,7 @@ REQUIRED_WEB = {
 REQUIRED_API = {
     "name: ai-english-teacher-api",
     "rootDir: ai-english-teacher/backend",
-    "uvicorn",
+    "./start.sh",
 }
 
 FORBIDDEN_WEB = [
@@ -59,6 +59,8 @@ def main() -> int:
         errors.append("Missing api service name")
     if not re.search(r"name:\s*ai-english-teacher-web", text):
         errors.append("Missing web service name")
+    if "SKIP_MIGRATIONS" in text and '"false"' not in text.split("SKIP_MIGRATIONS", 1)[1][:30]:
+        errors.append("API should set SKIP_MIGRATIONS: false to apply migrations on deploy")
 
     if errors:
         print("render.yaml validation FAILED:")

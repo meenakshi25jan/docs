@@ -57,6 +57,7 @@ flowchart LR
 - [Rollback](./ROLLBACK.md)
 - [Audit report](./AUDIT_REPORT.md)
 - [Final CI/CD report](./FINAL_REPORT.md)
+- [Deployment fix report](./DEPLOYMENT_FIX_REPORT.md)
 
 ## Fresh Render setup
 
