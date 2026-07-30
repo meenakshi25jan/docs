@@ -87,13 +87,45 @@ async def node_recall_memory(state: ConversationState) -> dict[str, Any]:
 async def node_rag(state: ConversationState) -> dict[str, Any]:
     if state.get("blocked"):
         return {}
-    chunks = await retrieve(
-        state.get("message", ""),
+    from app.services.knowledge_intelligence_service import KnowledgeIntelligenceService
+
+    ki = KnowledgeIntelligenceService()
+    recurring = state.get("recurring_mistakes", [])
+    grounding = await ki.build_grounding_context(
+        message=state.get("message", ""),
         scenario=state.get("scenario", ""),
-        top_k=3,
+        cefr_level=state.get("cefr_level", "B1"),
+        recurring_mistakes=recurring,
         tenant_id=state.get("tenant_id"),
+        retrieve=True,
     )
-    return {"rag_chunks": chunks, "agent_path": _append_path(state, "RAGAgent")}
+    chunks = []
+    for i, expl in enumerate(grounding.explanations[:3]):
+        src = grounding.sources[i] if i < len(grounding.sources) else "curriculum"
+        chunks.append(
+            {
+                "text": expl,
+                "source": src,
+                "topic": grounding.lesson_id or "",
+                "score": 1.0,
+                "method": grounding.validation.retrieval_method,
+            }
+        )
+    if not chunks and state.get("message"):
+        from app.orchestration.rag_agent import retrieve
+
+        chunks = await retrieve(
+            state.get("message", ""),
+            scenario=state.get("scenario", ""),
+            top_k=3,
+            tenant_id=state.get("tenant_id"),
+        )
+    return {
+        "rag_chunks": chunks,
+        "grounding_context": grounding.compact_text,
+        "knowledge_grounding": ki.to_metadata(grounding).model_dump(),
+        "agent_path": _append_path(state, "RAGAgent"),
+    }
 
 
 async def node_build_context(state: ConversationState) -> dict[str, Any]:
@@ -117,6 +149,14 @@ async def node_build_context(state: ConversationState) -> dict[str, Any]:
     enriched["lesson_reflections"] = state.get("lesson_reflections", [])
     enriched["memory_summary"] = state.get("memory_summary", "")
     enriched["memory_bundle"] = state.get("memory_bundle", {})
+    enriched["grounding_context"] = state.get("grounding_context", "")
+    enriched["knowledge_grounding"] = state.get("knowledge_grounding", {})
+    if enriched.get("grounding_context"):
+        from app.services.knowledge_intelligence_service import KnowledgeIntelligenceService
+
+        enriched["teaching_instruction"] = KnowledgeIntelligenceService().inject_teaching_instruction(
+            enriched.get("teaching_instruction", ""), enriched["grounding_context"]
+        )
     if enriched.get("memory_summary"):
         enriched["teaching_instruction"] = (
             f"{enriched.get('teaching_instruction', '')}\n"

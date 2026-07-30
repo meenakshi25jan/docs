@@ -194,6 +194,13 @@ async def execute_teacher_brain(
             f"{enriched_context['teaching_instruction']}\n"
             f"Learner memory: {enriched_context['memory_summary'][:800]}"
         ).strip()
+    if enriched_context.get("grounding_context"):
+        from app.services.knowledge_intelligence_service import KnowledgeIntelligenceService
+
+        enriched_context["teaching_instruction"] = KnowledgeIntelligenceService().inject_teaching_instruction(
+            enriched_context.get("teaching_instruction", ""),
+            enriched_context["grounding_context"],
+        )
     is_voice = bool(enriched_context.get("voice_summary") and enriched_context.get("voice_summary") != "not available")
 
     tb_input = TeacherBrainInput.from_teacher_context(

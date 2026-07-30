@@ -277,6 +277,8 @@ class CognitiveOrchestrator:
             "memory_summary_available": bool(memory_bundle.get("memory_summary")),
         }
 
+        knowledge_grounding = teacher_context.get("knowledge_grounding") or {}
+
         return {
             "response": response_text,
             "intent": intent.value,
@@ -291,6 +293,7 @@ class CognitiveOrchestrator:
             "agent_output": brain_output,
             "teacher_brain": brain_output.get("teacher_brain"),
             "memory": memory_meta,
+            "knowledge_grounding": knowledge_grounding,
             "cognitive_trace": trace.to_dict(),
             "memory_domains": memory_bundle.get("domains_queried", []),
         }
