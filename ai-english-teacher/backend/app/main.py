@@ -12,6 +12,7 @@ from app.core.logging_config import setup_logging
 from app.core.middleware import RequestIdMiddleware
 from app.core.request_context import get_request_id
 from app.services.health_service import probe_database, validate_production_jwt_secret
+from app.services.startup_diagnostics import log_startup_diagnostics
 from app.api.v1.auth import router as auth_router
 from app.api.v1.assessments import router as assessments_router
 from app.api.v1.conversations import router as conversations_router
@@ -41,6 +42,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
+    log_startup_diagnostics()
     validate_production_jwt_secret()
     yield
 

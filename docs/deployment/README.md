@@ -59,7 +59,7 @@ flowchart LR
 - [Final CI/CD report](./FINAL_REPORT.md)
 - [Deployment fix report](./DEPLOYMENT_FIX_REPORT.md)
 - [Production readiness](./PRODUCTION_READINESS.md)
-- [FAQ](./FAQ.md)
+- [Final deployment report](./FINAL_DEPLOYMENT_REPORT.md)
 
 ## Fresh Render setup
 
