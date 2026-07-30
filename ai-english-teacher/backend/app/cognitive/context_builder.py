@@ -37,11 +37,16 @@ async def build_teacher_context(
         )
 
     knowledge_lines = [f"- [{c.get('source', 'curriculum')}] {c.get('text', '')}" for c in rag_chunks[:3]]
-    errors = list(memory_bundle.get("learning_mistakes", []))
+    errors = list(memory_bundle.get("learning_mistakes", []) or memory_bundle.get("recent_errors", []))
     for m in memory_bundle.get("conversation", []):
         if m.get("type") == "mistake" and m.get("text"):
             errors.append(str(m["text"]))
     errors = list(dict.fromkeys(errors))[:10]
+
+    lesson_reflections = memory_bundle.get("lesson_reflections", [])
+    memory_summary = str(memory_bundle.get("memory_summary", "") or "")
+    preferences = memory_bundle.get("preferences", {}) or memory_bundle.get("student_profile", {}).get("preferences", {})
+    skill_weaknesses = memory_bundle.get("skill_weaknesses", [])
 
     web_summary = ""
     if state.web_results:
@@ -76,6 +81,11 @@ async def build_teacher_context(
         "memory_count": len(memory_bundle.get("conversation", [])),
         "recurring_mistakes": memory_bundle.get("recurring_mistakes", []),
         "student_profile": memory_bundle.get("student_profile", {}),
+        "lesson_reflections": lesson_reflections,
+        "memory_summary": memory_summary,
+        "preferences": preferences,
+        "skill_weaknesses": skill_weaknesses,
+        "memory_bundle": memory_bundle,
         "teaching_instruction": state.voice.teaching_instruction or "",
         "teaching_mode": state.voice.teaching_mode or "none",
         "voice_summary": voice_summary,

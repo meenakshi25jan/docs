@@ -107,6 +107,26 @@ async def run_voice_turn(
 
     latency_ms = int((time.perf_counter() - started) * 1000)
     teacher_brain_meta = output.data.get("teacher_brain") or (output.metadata or {}).get("teacher_brain")
+    memory_meta = (output.metadata or {}).get("memory")
+
+    if not memory_meta:
+        try:
+            from app.services.memory_intelligence_service import MemoryIntelligenceService
+
+            bundle = await MemoryIntelligenceService().build_bundle_with_session_recall(
+                learner_id=learner_id,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                conversation_id=conversation_id or session_id,
+                message_history=enriched_history,
+            )
+            memory_meta = bundle.to_api_metadata()
+        except Exception:  # noqa: BLE001
+            memory_meta = {
+                "recurring_mistakes_count": 0,
+                "reflections_available": False,
+                "memory_summary_available": False,
+            }
 
     return {
         "transcript": final_transcript,
@@ -130,6 +150,7 @@ async def run_voice_turn(
         },
         "analysis_id": voice_result.get("analysis_id"),
         "teacher_brain": teacher_brain_meta,
+        "memory": memory_meta,
         "agent_output": output.data,
         "metadata": {
             **(output.metadata or {}),

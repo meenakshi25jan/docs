@@ -7,8 +7,7 @@ from typing import Any
 
 from app.cognitive.events import IntentType
 from app.cognitive.tool_router import ToolName
-from app.orchestration.memory_agent import recall_memories
-from app.services.memory_store import get_recurring_mistakes
+from app.services.memory_intelligence_service import MemoryIntelligenceService
 
 
 class MemoryDomain(str, Enum):
@@ -38,6 +37,8 @@ async def route_memories(
     tenant_id: str | None,
     query: str | None,
     student_slice: dict[str, Any],
+    message_history: list[dict[str, str]] | None = None,
+    conversation_id: str | None = None,
 ) -> dict[str, Any]:
     domains: set[MemoryDomain] = set()
     for tool in tools:
@@ -51,27 +52,43 @@ async def route_memories(
         "recurring_mistakes": [],
         "student_profile": {},
         "knowledge": [],
+        "lesson_reflections": [],
+        "teacher_brain_decisions": [],
+        "learning_events": [],
+        "recent_turns": [],
+        "preferences": {},
+        "skill_weaknesses": [],
+        "memory_summary": "",
+        "metadata": {},
     }
 
-    if MemoryDomain.CONVERSATION in domains or MemoryDomain.LEARNING in domains:
-        memories, recent_errors = await recall_memories(
-            session_id,
-            learner_id,
+    needs_memory = (
+        MemoryDomain.CONVERSATION in domains
+        or MemoryDomain.LEARNING in domains
+        or MemoryDomain.STUDENT_PROFILE in domains
+    )
+
+    if needs_memory:
+        service = MemoryIntelligenceService()
+        bundle = await service.build_bundle_with_session_recall(
+            learner_id=learner_id,
             tenant_id=tenant_id,
+            session_id=session_id,
+            conversation_id=conversation_id or session_id,
+            message_history=message_history,
             query=query,
         )
-        result["conversation"] = memories
-        result["learning_mistakes"] = recent_errors
-
-    if MemoryDomain.LEARNING in domains and tenant_id:
-        result["recurring_mistakes"] = await get_recurring_mistakes(learner_id, tenant_id, limit=8)
+        router_dict = bundle.to_router_dict()
+        result.update(router_dict)
 
     if MemoryDomain.STUDENT_PROFILE in domains:
+        profile_prefs = result.get("preferences") or {}
         result["student_profile"] = {
             "cefr_level": student_slice.get("cefr_level"),
             "challenge_level": student_slice.get("challenge_level"),
-            "preferences": student_slice.get("preferences", {}),
+            "preferences": profile_prefs or student_slice.get("preferences", {}),
             "goals": student_slice.get("goals", []),
+            "skill_weaknesses": result.get("skill_weaknesses", []),
         }
 
     return result

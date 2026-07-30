@@ -15,7 +15,6 @@ from app.ai.openai_client import extract_teacher_response
 from app.orchestration.context_manager import build_enriched_context
 from app.orchestration.conversation_agent import ConversationAgent
 from app.orchestration.cost_router import select_model_hint
-from app.orchestration.memory_agent import recall_memories, store_from_teacher_output
 from app.orchestration.moderation import moderate_text
 from app.orchestration.orchestrator import classify_intent
 from app.orchestration.rag_agent import retrieve
@@ -62,15 +61,25 @@ async def node_orchestrate(state: ConversationState) -> dict[str, Any]:
 async def node_recall_memory(state: ConversationState) -> dict[str, Any]:
     if state.get("blocked"):
         return {}
-    memories, recent_errors = await recall_memories(
-        state["session_id"],
-        state["learner_id"],
+    from app.services.memory_intelligence_service import MemoryIntelligenceService
+
+    service = MemoryIntelligenceService()
+    bundle = await service.build_bundle_with_session_recall(
+        learner_id=state["learner_id"],
         tenant_id=state.get("tenant_id"),
+        session_id=state["session_id"],
+        conversation_id=state["session_id"],
+        message_history=state.get("message_history", []),
         query=state.get("message"),
     )
+    router_dict = bundle.to_router_dict()
     return {
-        "memories": memories,
-        "recent_errors": recent_errors,
+        "memories": router_dict.get("conversation", []),
+        "recent_errors": router_dict.get("recent_errors", []),
+        "recurring_mistakes": router_dict.get("recurring_mistakes", []),
+        "lesson_reflections": router_dict.get("lesson_reflections", []),
+        "memory_summary": router_dict.get("memory_summary", ""),
+        "memory_bundle": router_dict,
         "agent_path": _append_path(state, "MemoryAgent"),
     }
 
@@ -104,6 +113,15 @@ async def node_build_context(state: ConversationState) -> dict[str, Any]:
         teaching_mode=state.get("teaching_mode"),
         voice_analysis=state.get("voice_analysis"),
     )
+    enriched["recurring_mistakes"] = state.get("recurring_mistakes", [])
+    enriched["lesson_reflections"] = state.get("lesson_reflections", [])
+    enriched["memory_summary"] = state.get("memory_summary", "")
+    enriched["memory_bundle"] = state.get("memory_bundle", {})
+    if enriched.get("memory_summary"):
+        enriched["teaching_instruction"] = (
+            f"{enriched.get('teaching_instruction', '')}\n"
+            f"Learner memory: {enriched['memory_summary'][:800]}"
+        ).strip()
     from app.orchestration.teacher_brain.teacher_brain_service import TeacherBrainService
 
     service = TeacherBrainService()
@@ -167,11 +185,14 @@ async def node_store_memory(state: ConversationState) -> dict[str, Any]:
     if state.get("blocked"):
         return {}
     output = state.get("agent_output", {})
-    await store_from_teacher_output(
-        state["session_id"],
-        state["learner_id"],
-        output,
+    from app.services.memory_intelligence_service import MemoryIntelligenceService
+
+    await MemoryIntelligenceService().write_after_teacher_turn(
+        session_id=state["session_id"],
+        learner_id=state["learner_id"],
         tenant_id=state.get("tenant_id"),
+        agent_output=output,
+        conversation_id=state["session_id"],
     )
     session = await merge_session(state["session_id"], {})
     await merge_session(state["session_id"], {

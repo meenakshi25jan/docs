@@ -980,6 +980,86 @@ Expect: `response`, `teaching_mode`, `corrections`, `voice_scores`, and optional
 
 ---
 
+## 19. Memory Intelligence v1
+
+Memory Intelligence is a unified read/write layer that lets the AI Teacher remember recurring mistakes, lesson reflections, Teacher Brain decisions, and learner preferences across sessions.
+
+### Memory types
+
+| Type | Storage |
+|------|---------|
+| Recurring mistakes | `error_tracking` |
+| Lesson reflections | `learner_memories` (`memory_type=lesson_reflection`) |
+| Teacher Brain decisions | `learner_memories` (`memory_type=teacher_brain_decision`) |
+| Learning events | `learner_memories` (`memory_type=learning_event`) |
+| Lesson reports | `reports` (`report_type=lesson_completion`) |
+| Preferences | `learner_profiles.preferences` + `learner_memories` |
+| Recent turns | `conversation_messages` (read at request time) |
+
+### Read policy (deterministic, no AI required)
+
+- Recent turns: max 12 messages
+- Recurring mistakes: max 8, by `occurrence_count` and `last_seen_at`
+- Lesson reflections: max 3
+- Teacher Brain decisions: max 5
+- `memory_summary`: max 1500 characters for TeacherAgent context
+
+### Write points
+
+- After voice turn / cognitive turn: Teacher Brain decision + grammar corrections via `MemoryIntelligenceService.write_after_teacher_turn()`
+- After lesson report: full report to `reports`, reflection to `learner_memories`, learning event
+- Voice pipeline: grammar errors to `error_tracking` (existing)
+
+### Optional API endpoints
+
+- `GET /api/v1/memory/summary` — compact memory summary for current learner
+- `GET /api/v1/memory/reflections` — recent lesson reflections
+
+### Optional voice-turn metadata
+
+```json
+{
+  "memory": {
+    "recurring_mistakes_count": 3,
+    "reflections_available": true,
+    "memory_summary_available": true
+  }
+}
+```
+
+Core voice-turn fields are unchanged.
+
+### Mock mode
+
+Memory retrieval does not require embeddings or LLM calls. `build_bundle()` returns a safe empty bundle on failure.
+
+### Smoke tests
+
+```bash
+# Memory summary (authenticated)
+curl https://ai-english-teacher-api.onrender.com/api/v1/memory/summary \
+  -H "Authorization: Bearer $TOKEN"
+
+# Lesson report (persists reflection)
+curl https://ai-english-teacher-api.onrender.com/api/v1/conversations/$CONV_ID/lesson-report \
+  -H "Authorization: Bearer $TOKEN"
+
+# Voice turn with memory metadata
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/voice/turn \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transcript":"I am go to market yesterday.","scenario":"everyday"}'
+```
+
+### Known limitations
+
+- Text message path does not yet attach full memory metadata (voice-first scope)
+- `vocabulary_entries` table not integrated
+- Memory decay/archival deferred to v2
+- LangGraph path uses same `MemoryIntelligenceService` but with lighter session context when no conversation DB rows exist
+
+---
+
 ## Related docs
 
 | Doc | Path |

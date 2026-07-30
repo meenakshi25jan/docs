@@ -179,10 +179,21 @@ async def execute_teacher_brain(
 
     started = time.perf_counter()
     enriched_context = dict(context)
-    enriched_context.setdefault("memory_bundle", {
-        "recurring_mistakes": enriched_context.get("recurring_mistakes", []),
-        "learning_mistakes": enriched_context.get("recent_errors", []),
-    })
+    if not enriched_context.get("memory_bundle"):
+        enriched_context["memory_bundle"] = {
+            "recurring_mistakes": enriched_context.get("recurring_mistakes", []),
+            "learning_mistakes": enriched_context.get("recent_errors", []),
+            "lesson_reflections": enriched_context.get("lesson_reflections", []),
+            "memory_summary": enriched_context.get("memory_summary", ""),
+            "preferences": enriched_context.get("preferences", {}),
+            "skill_weaknesses": enriched_context.get("skill_weaknesses", []),
+        }
+    if enriched_context.get("memory_summary"):
+        enriched_context.setdefault("teaching_instruction", "")
+        enriched_context["teaching_instruction"] = (
+            f"{enriched_context['teaching_instruction']}\n"
+            f"Learner memory: {enriched_context['memory_summary'][:800]}"
+        ).strip()
     is_voice = bool(enriched_context.get("voice_summary") and enriched_context.get("voice_summary") != "not available")
 
     tb_input = TeacherBrainInput.from_teacher_context(

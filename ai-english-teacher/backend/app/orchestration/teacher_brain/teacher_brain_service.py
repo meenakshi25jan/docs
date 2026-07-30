@@ -205,7 +205,11 @@ class TeacherBrainService:
             orchestration_intent=intent,
             is_voice_turn=is_voice_turn,
         )
-        errors = detect_errors(message, voice_analysis=voice_analysis)
+        errors = detect_errors(
+            message,
+            voice_analysis=voice_analysis,
+            memory_bundle=context.get("memory_bundle"),
+        )
         strategy = select_teaching_strategy(
             intent_result,
             errors,

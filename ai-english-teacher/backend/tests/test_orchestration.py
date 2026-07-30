@@ -1,6 +1,6 @@
 """Tests for Wave 1 orchestration foundation."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -70,18 +70,22 @@ class TestConversationRunner:
             }
 
         with patch(
-            "app.cognitive.tool_executor.execute_teacher_brain",
+            "app.cognitive.orchestrator.execute_teacher_brain",
             side_effect=fake_teacher_brain,
         ):
-            output = await run_conversation_turn(
-                session_id="test-session-1",
-                learner_id="learner-1",
-                tenant_id=None,
-                scenario="general_conversation",
-                cefr_level="B1",
-                message="Explain present perfect",
-                message_history=[],
-            )
+            with patch(
+                "app.services.memory_intelligence_service.MemoryIntelligenceService.write_after_teacher_turn",
+                new_callable=AsyncMock,
+            ):
+                output = await run_conversation_turn(
+                    session_id="test-session-1",
+                    learner_id="learner-1",
+                    tenant_id=None,
+                    scenario="general_conversation",
+                    cefr_level="B1",
+                    message="Explain present perfect",
+                    message_history=[],
+                )
         assert "present perfect" in output.data.get("response", "").lower()
         assert output.metadata.get("orchestration") == "cognitive"
         assert "teacher_brain" in str(output.metadata.get("cognitive_trace", {}))
