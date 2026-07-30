@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -117,6 +118,7 @@ async def persist_mistake(
             )
             if existing:
                 existing.occurrence_count += 1
+                existing.last_seen_at = datetime.now(timezone.utc)
                 if correction:
                     existing.correction = correction[:500]
             else:

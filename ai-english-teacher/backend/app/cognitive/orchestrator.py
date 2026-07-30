@@ -146,6 +146,8 @@ class CognitiveOrchestrator:
                         "preferences": state.student.preferences,
                         "goals": state.student.goals,
                     },
+                    message_history=message_history,
+                    conversation_id=session_id,
                 ),
                 lambda: {"conversation": [], "learning_mistakes": [], "recurring_mistakes": []},
                 label="memory_route",
@@ -237,6 +239,20 @@ class CognitiveOrchestrator:
 
         response_text = extract_teacher_response(brain_output) or "Could you tell me more about that?"
 
+        # --- Post-turn memory write (Teacher Brain + teacher output) ---
+        try:
+            from app.services.memory_intelligence_service import MemoryIntelligenceService
+
+            await MemoryIntelligenceService().write_after_teacher_turn(
+                session_id=session_id,
+                learner_id=learner_id,
+                tenant_id=tenant_id,
+                agent_output=brain_output,
+                conversation_id=session_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("memory_intelligence.post_turn_write_failed", extra={"error": str(exc)})
+
         # --- Output moderation ---
         with StepTimer(trace, "moderate_output") as _:
             out_mod = moderate_text(response_text, direction="output")
@@ -255,6 +271,12 @@ class CognitiveOrchestrator:
 
         trace.total_latency_ms = int((time.perf_counter() - started) * 1000)
 
+        memory_meta = {
+            "recurring_mistakes_count": len(memory_bundle.get("recurring_mistakes", [])),
+            "reflections_available": bool(memory_bundle.get("lesson_reflections")),
+            "memory_summary_available": bool(memory_bundle.get("memory_summary")),
+        }
+
         return {
             "response": response_text,
             "intent": intent.value,
@@ -268,6 +290,7 @@ class CognitiveOrchestrator:
             "voice_analysis": state.voice.voice_analysis,
             "agent_output": brain_output,
             "teacher_brain": brain_output.get("teacher_brain"),
+            "memory": memory_meta,
             "cognitive_trace": trace.to_dict(),
             "memory_domains": memory_bundle.get("domains_queried", []),
         }

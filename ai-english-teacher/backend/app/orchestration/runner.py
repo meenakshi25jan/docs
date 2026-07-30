@@ -74,6 +74,7 @@ async def run_conversation_turn(
             "model_tier": result.get("model_tier"),
             "teaching_mode": result.get("teaching_mode"),
             "teacher_brain": result.get("teacher_brain"),
+            "memory": result.get("memory"),
             "cognitive_trace": result.get("cognitive_trace"),
             "orchestration": "cognitive",
         }
@@ -97,6 +98,7 @@ async def run_conversation_turn(
         data["response"] = extract_teacher_response(data) or "Could you tell me more about that?"
 
     metadata = dict(final.get("metadata", {}))
+    memory_bundle = final.get("memory_bundle", {})
     metadata.update({
         "trace_id": final.get("trace_id"),
         "agent_path": final.get("agent_path", []),
@@ -104,5 +106,10 @@ async def run_conversation_turn(
         "next_agent": final.get("next_agent"),
         "rag_chunks": final.get("rag_chunks", []),
         "orchestration": "langgraph",
+        "memory": {
+            "recurring_mistakes_count": len(memory_bundle.get("recurring_mistakes", [])),
+            "reflections_available": bool(memory_bundle.get("lesson_reflections")),
+            "memory_summary_available": bool(memory_bundle.get("memory_summary")),
+        },
     })
     return AgentOutput(data=data, metadata=metadata)

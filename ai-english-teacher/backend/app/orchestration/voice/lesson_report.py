@@ -13,6 +13,7 @@ from app.agents import AGENT_REGISTRY
 from app.models.memory import VoiceAnalysis
 from app.scoring.engine import aggregate_scores
 from app.services.memory_store import get_recurring_mistakes
+from app.services.memory_intelligence_service import MemoryIntelligenceService
 from app.services.progress_snapshot_service import record_from_lesson_scores
 
 
@@ -97,7 +98,16 @@ async def generate_lesson_report(
         estimate=estimate,
     )
 
-    return {
+    executive_summary = ai_report.get("executive_summary", "")
+    recommendations = ai_report.get("recommendations", [])
+    suggested_practice = ai_report.get("next_steps", [])
+    recommended_focus = None
+    if isinstance(ai_report.get("skill_breakdown"), dict):
+        recommended_focus = ai_report["skill_breakdown"].get("focus") or ai_report["skill_breakdown"].get("weakest")
+    if not recommended_focus and recurring:
+        recommended_focus = recurring[0].get("category", "grammar")
+
+    report_payload = {
         "lesson_summary": {
             "turn_count": len(analyses),
             "scenario": scenario,
@@ -114,8 +124,38 @@ async def generate_lesson_report(
         },
         "recurring_mistakes": recurring,
         "new_vocabulary": new_vocab[:15],
-        "executive_summary": ai_report.get("executive_summary", ""),
-        "recommendations": ai_report.get("recommendations", []),
-        "suggested_practice": ai_report.get("next_steps", []),
+        "executive_summary": executive_summary,
+        "recommendations": recommendations,
+        "suggested_practice": suggested_practice,
         "personalized_next_lesson": ai_report.get("skill_breakdown", {}),
     }
+
+    mi = MemoryIntelligenceService()
+    conv_id_str = str(conversation_id) if conversation_id else None
+    report_id = await mi.persist_lesson_report(
+        learner_id=str(learner_id),
+        tenant_id=str(tenant_id),
+        report_content=report_payload,
+        db=db,
+    )
+    await mi.write_lesson_reflection(
+        learner_id=str(learner_id),
+        tenant_id=str(tenant_id),
+        executive_summary=executive_summary or "Lesson completed.",
+        recurring_mistakes=recurring,
+        recommended_next_focus=str(recommended_focus) if recommended_focus else None,
+        practice_recommendations=suggested_practice if isinstance(suggested_practice, list) else [],
+        conversation_id=conv_id_str,
+        report_id=report_id,
+        db=db,
+    )
+    await mi.write_learning_event(
+        learner_id=str(learner_id),
+        tenant_id=str(tenant_id),
+        event_type="lesson_report_generated",
+        detail=f"Lesson report for conversation {conv_id_str or 'session'}",
+        conversation_id=conv_id_str,
+        db=db,
+    )
+
+    return report_payload
