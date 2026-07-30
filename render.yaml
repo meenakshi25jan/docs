@@ -1,6 +1,6 @@
-# Render Blueprint (repo root) — AI English Teacher
-# Dashboard: https://dashboard.render.com/blueprints
-# Docs: ai-english-teacher/deploy/cheapest/RENDER_FIX.md
+# Render Blueprint — AI English Teacher (single source of truth)
+# https://dashboard.render.com/blueprints
+# Docs: docs/deployment/README.md
 
 services:
   - type: web
@@ -9,6 +9,7 @@ services:
     region: oregon
     plan: free
     branch: main
+    autoDeploy: true
     rootDir: ai-english-teacher/backend
     buildCommand: |
       pip install -r requirements-render.txt
@@ -19,6 +20,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.4"
+      - key: ENVIRONMENT
+        value: production
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
@@ -52,10 +55,10 @@ services:
     region: oregon
     plan: free
     branch: main
+    autoDeploy: true
     rootDir: ai-english-teacher/frontend
     buildCommand: npm ci && npm run build
     startCommand: npm start
-    # npm start runs standalone server; build log must list /grammar-class
     envVars:
       - key: NODE_VERSION
         value: "20"
