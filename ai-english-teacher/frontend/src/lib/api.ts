@@ -192,4 +192,29 @@ export const api = {
       duration_seconds?: number;
     }) => request('/grammar/practice', { method: 'POST', body: data }),
   },
+  curriculum: {
+    topics: () => request('/curriculum/topics'),
+    skills: (topicId?: string) =>
+      request(topicId ? `/curriculum/skills?topic_id=${encodeURIComponent(topicId)}` : '/curriculum/skills'),
+    lessons: (params?: { topic_id?: string; skill_focus?: string; cefr_level?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.topic_id) q.set('topic_id', params.topic_id);
+      if (params?.skill_focus) q.set('skill_focus', params.skill_focus);
+      if (params?.cefr_level) q.set('cefr_level', params.cefr_level);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return request(`/curriculum/lessons${suffix}`);
+    },
+    recommended: () => request('/curriculum/recommended'),
+    learningPath: (type: string = 'daily') =>
+      request(`/curriculum/learning-path?type=${encodeURIComponent(type)}`),
+    lessonComplete: (data: {
+      lesson_id: string;
+      title?: string;
+      skill_focus?: string;
+      route?: string;
+      score?: number;
+      metadata?: Record<string, unknown>;
+    }) => request('/curriculum/lesson-complete', { method: 'POST', body: data }),
+    revisionSchedule: () => request('/curriculum/revision-schedule'),
+  },
 };

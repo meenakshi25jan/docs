@@ -362,6 +362,7 @@ Update `CORS_ORIGINS` on API to include your Vercel URL.
 | `003_auth_rls.sql` | Login email lookup policy |
 | `004_fix_rls_policies.sql` | Fix RLS uuid cast errors on register |
 | `005_knowledge_and_voice.sql` | RAG knowledge chunks + `voice_analyses` table |
+| `006_curriculum_intelligence.sql` | `lesson_completions` + `revision_schedule` (Curriculum Intelligence v1) |
 
 **Canonical migration path:** `database/migrations/` (used by Docker Compose init and `scripts/migrate.py`).
 
@@ -668,8 +669,15 @@ Infra fixes on `cursor/cheapest-cloud-deploy-d164`. Voice-first features on `cur
 | GET | `/dashboard/student` | Yes | Student dashboard data |
 | GET | `/dashboard/teacher` | Yes | Teacher dashboard data |
 | GET | `/dashboard/admin` | Yes | Admin dashboard data |
+| GET | `/curriculum/topics` | No* | Curriculum topic list |
+| GET | `/curriculum/skills` | Yes | Curriculum skills |
+| GET | `/curriculum/lessons` | Yes | Curriculum lessons |
+| GET | `/curriculum/recommended` | Yes | Primary + alternate lesson recommendations |
+| GET | `/curriculum/learning-path` | Yes | Daily / weekly / exam / repair / confidence path |
+| POST | `/curriculum/lesson-complete` | Yes | Record lesson completion + schedule revision |
+| GET | `/curriculum/revision-schedule` | Yes | Learner revision schedule |
 
-\* `/voice/personas` is public; voice turn endpoints require auth.
+\* `/voice/personas` and `/curriculum/topics` are public; other curriculum endpoints require auth.
 
 Full interactive docs: https://ai-english-teacher-api.onrender.com/docs
 
@@ -1060,6 +1068,162 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/voice/turn \
 
 ---
 
+## 20. Curriculum Intelligence v1
+
+Curriculum Intelligence is the deterministic decision layer that determines what to learn next, what to revise, which learning path to follow, and which lesson Teacher Brain should recommend. It consumes Student Intelligence summaries, Memory Intelligence bundles, learner profiles, assessment results, progress snapshots, and lesson completions — without modifying Teacher Brain core planning logic.
+
+### Architecture
+
+```
+Student Intelligence summary + Memory Intelligence bundle + learner profile
+  → CurriculumIntelligenceService.build_recommendations()
+  → Deterministic recommendation engine (10 rules, priority order)
+  → primary recommendation + up to 2 alternates
+  → optional curriculum_recommendation metadata on voice-turn response
+```
+
+**Key modules:**
+
+| Module | Path | Role |
+|--------|------|------|
+| Registry | `backend/app/services/curriculum_registry.py` | Topics, skills, lessons, prerequisites, path templates |
+| Service | `backend/app/services/curriculum_intelligence_service.py` | Recommendations, paths, revision scheduling |
+| Repository | `backend/app/repositories/curriculum_repository.py` | `lesson_completions`, `revision_schedule` persistence |
+| API | `backend/app/api/v1/curriculum.py` | REST endpoints |
+| Schemas | `backend/app/schemas/curriculum_intelligence.py` | Request/response contracts |
+
+### Curriculum registry
+
+Single source of truth for curriculum content. No AI required.
+
+**Topics:** grammar, vocabulary, speaking, pronunciation, fluency, listening, writing, exam_preparation
+
+**Sources:** `grammar_curriculum.py`, `personas.py`, conversation scenarios, exam personas
+
+**Registry functions:** `get_topics()`, `get_skills()`, `get_lessons()`, `get_lesson()`, `get_paths()`, `get_path()`
+
+### Recommendation engine (deterministic rules)
+
+Priority order — first match wins:
+
+| Rule | Condition | Recommendation |
+|------|-----------|----------------|
+| 1 | No completed assessment | Placement assessment |
+| 2 | Due revision item in schedule | Revision lesson |
+| 3 | Recurring mistake `occurrence_count >= 3` | Targeted grammar lesson |
+| 4 | `weakest_skill == grammar` | Grammar lesson |
+| 5 | `weakest_skill == pronunciation` | Pronunciation lesson |
+| 6 | `weakest_skill == fluency` or `speaking` | Conversation scenario |
+| 7 | `target_exam == IELTS` | IELTS speaking practice |
+| 8 | `target_exam == PTE` | PTE practice |
+| 9 | `confidence_score < 0.5` | Beginner confidence lesson |
+| 10 | Else | Next lesson from CEFR path |
+
+Each recommendation includes: `lesson_id`, `title`, `reason`, `route`, `skill_focus`, `priority`.
+
+### Learning paths
+
+| Path type | Contents |
+|-----------|----------|
+| **daily** | One revision + one weak-skill lesson + one speaking practice |
+| **weekly** | Three lesson recommendations + two speaking scenarios + revision + assessment checkpoint |
+| **exam** | Exam-tagged lessons, speaking-first progression |
+| **repair** | Weakest-skill focus |
+| **confidence** | Friendly beginner persona, conversational scenarios, low-pressure learning |
+
+Query: `GET /api/v1/curriculum/learning-path?type=daily|weekly|exam|repair|confidence`
+
+### Revision scheduling
+
+Revision items are generated from `error_tracking`, lesson completions, and memory reflections.
+
+| Trigger | Due interval |
+|---------|--------------|
+| `occurrence_count` 2–4 | Review in 3 days |
+| `occurrence_count` 5+ | Review in 1 day |
+| Lesson score 70–89 | Review in 7 days |
+| Lesson score 90+ | Review in 30 days |
+
+Stored in `revision_schedule` table (migration `006_curriculum_intelligence.sql`).
+
+### New APIs
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/curriculum/topics` | No | List curriculum topics |
+| GET | `/curriculum/skills` | Yes | List skills |
+| GET | `/curriculum/lessons` | Yes | List lessons (optional `topic`, `skill` filters) |
+| GET | `/curriculum/recommended` | Yes | Primary + alternate recommendations |
+| GET | `/curriculum/learning-path` | Yes | Path bundle (`type` query param) |
+| POST | `/curriculum/lesson-complete` | Yes | Record completion + trigger revision |
+| GET | `/curriculum/revision-schedule` | Yes | Learner revision schedule |
+
+### Teacher Brain integration (additive only)
+
+Voice-turn responses may include optional metadata — core Teacher Brain planning is unchanged:
+
+```json
+{
+  "curriculum_recommendation": {
+    "lesson_id": "grammar-9-modal-verbs",
+    "title": "Modal Verbs",
+    "reason": "Your weakest skill is grammar.",
+    "route": "/grammar-class",
+    "skill_focus": "grammar"
+  }
+}
+```
+
+### Dashboard integration
+
+Student dashboard (`/dashboard/student`) shows a **Recommended Next Lesson** card using `GET /curriculum/recommended` — title, reason, skill focus, and lesson CTA.
+
+### Mock mode
+
+Curriculum Intelligence does not require embeddings or LLM calls. Registry is static; recommendation engine is fully deterministic. `build_recommendations()` returns a safe empty bundle on failure.
+
+### Smoke tests
+
+```bash
+# 1. Login and capture token
+TOKEN=$(curl -s -X POST https://ai-english-teacher-api.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"testpass12"}' | jq -r .access_token)
+
+# 2. Recommended next lesson
+curl https://ai-english-teacher-api.onrender.com/api/v1/curriculum/recommended \
+  -H "Authorization: Bearer $TOKEN"
+
+# 3. Daily learning path
+curl "https://ai-english-teacher-api.onrender.com/api/v1/curriculum/learning-path?type=daily" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. Complete a lesson
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/curriculum/lesson-complete \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"lesson_id":"grammar-9-modal-verbs","score":85,"skill_focus":"grammar"}'
+
+# 5. Revision schedule
+curl https://ai-english-teacher-api.onrender.com/api/v1/curriculum/revision-schedule \
+  -H "Authorization: Bearer $TOKEN"
+
+# 6. Voice turn — confirm curriculum_recommendation metadata
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/conversations/$CONV_ID/voice-turn \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transcript":"Hello teacher, I want to practice speaking.","scenario":"everyday"}'
+```
+
+### Known limitations
+
+- Registry content is v1 static — dynamic curriculum authoring deferred to Knowledge Intelligence (Phase 5)
+- Revision scheduler does not yet send push/reminder notifications
+- Learning paths do not auto-advance on calendar boundaries (request-time generation only)
+- Text message path does not attach curriculum metadata (voice-first scope)
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1078,4 +1242,4 @@ curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/voice/turn \
 
 ---
 
-*Last updated: voice-first PRD v2 · branch `cursor/voice-first-redesign-f37f` · stack: Render + Neon + Next.js proxy*
+*Last updated: Curriculum Intelligence v1 · branch `cursor/curriculum-intelligence-v1-f37f` · stack: Render + Neon + Next.js proxy*
