@@ -935,6 +935,51 @@ Expected for new learners: `recommended_next_focus: "placement assessment"`, `ha
 
 ---
 
+## 18. Teacher Brain v1
+
+Teacher Brain is a planning layer that makes each teacher response more personalized before the existing `TeacherAgent` generates spoken text.
+
+### Integration points
+
+| Path | Location |
+|------|----------|
+| Cognitive (default) | `cognitive/tool_executor.py` → `execute_teacher_brain()` → `TeacherBrainService` |
+| LangGraph fallback | `orchestration/graph.py` → `enrich_context_for_langgraph()` |
+| Voice turn API | Optional `teacher_brain` metadata on `/voice/turn` and `/conversations/{id}/voice-turn` |
+
+### Optional API metadata
+
+```json
+{
+  "teacher_brain": {
+    "intent": "practice_continuation",
+    "teaching_strategy": "scaffold",
+    "skill_focus": "grammar",
+    "correction_mode": "immediate",
+    "next_prompt": "Can you try one more sentence using past tense?"
+  }
+}
+```
+
+Core fields (`response`, `teaching_mode`, `corrections`, `voice_scores`) are unchanged. `teaching_decision.py` remains the correction-timing authority.
+
+### Mock mode
+
+Teacher Brain uses deterministic heuristics for planning. Response generation uses existing mock `TeacherAgent` / `ConversationAgent` behavior when `AI_PROVIDER=mock`.
+
+### Smoke test
+
+```bash
+curl -X POST https://ai-english-teacher-api.onrender.com/api/v1/voice/turn \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transcript":"I am go to market yesterday.","scenario":"everyday","persona_id":"conversation_partner"}'
+```
+
+Expect: `response`, `teaching_mode`, `corrections`, `voice_scores`, and optional `teacher_brain` with `intent` and `skill_focus`.
+
+---
+
 ## Related docs
 
 | Doc | Path |

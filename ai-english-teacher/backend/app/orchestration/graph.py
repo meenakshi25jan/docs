@@ -104,6 +104,21 @@ async def node_build_context(state: ConversationState) -> dict[str, Any]:
         teaching_mode=state.get("teaching_mode"),
         voice_analysis=state.get("voice_analysis"),
     )
+    from app.orchestration.teacher_brain.teacher_brain_service import TeacherBrainService
+
+    service = TeacherBrainService()
+    enriched = await service.enrich_context_for_langgraph(
+        enriched,
+        learner_id=state.get("learner_id", ""),
+        tenant_id=state.get("tenant_id"),
+        message=state.get("message", ""),
+        scenario=state.get("scenario", "general_conversation"),
+        persona_id=state.get("persona_id") or "conversation_partner",
+        intent=state.get("intent", "conversation"),
+        is_voice_turn=bool(state.get("voice_analysis")),
+        teaching_mode=state.get("teaching_mode"),
+        voice_analysis=state.get("voice_analysis"),
+    )
     return {"enriched_context": enriched, "agent_path": _append_path(state, "ContextManagerAgent")}
 
 
@@ -130,16 +145,21 @@ async def node_execute_agent(state: ConversationState) -> dict[str, Any]:
     latency_ms = int((time.perf_counter() - started) * 1000)
     data = dict(output.data)
     data.setdefault("response", extract_teacher_response(data))
+    teacher_brain = state.get("enriched_context", {}).get("teacher_brain")
+    metadata = {
+        "agent": next_agent,
+        "intent": state.get("intent"),
+        "model_hint": state.get("model_hint"),
+        "latency_ms": latency_ms,
+        "rag_chunk_count": len(state.get("rag_chunks", [])),
+    }
+    if teacher_brain:
+        data["teacher_brain"] = teacher_brain
+        metadata["teacher_brain"] = teacher_brain
     return {
         "agent_output": data,
         "agent_path": _append_path(state, next_agent),
-        "metadata": {
-            "agent": next_agent,
-            "intent": state.get("intent"),
-            "model_hint": state.get("model_hint"),
-            "latency_ms": latency_ms,
-            "rag_chunk_count": len(state.get("rag_chunks", [])),
-        },
+        "metadata": metadata,
     }
 
 

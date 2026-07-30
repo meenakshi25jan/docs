@@ -22,6 +22,8 @@ interface Message {
   corrections?: Array<{ wrong?: string; correct?: string; text?: string; correction?: string }>;
   voiceScores?: { overall?: number; fluency?: number; pronunciation?: number };
   teachingMode?: string;
+  skillFocus?: string;
+  teachingStrategy?: string;
 }
 
 interface LessonReport {
@@ -74,7 +76,16 @@ export default function ConversationPage() {
       || (metadata?.grammar_corrections as Message['corrections']) || [];
     const voiceScores = metadata?.voice_scores as Message['voiceScores'];
     const teachingMode = metadata?.teaching_mode as string | undefined;
-    setMessages(prev => [...prev, { role: 'assistant', content, corrections, voiceScores, teachingMode }]);
+    const teacherBrain = metadata?.teacher_brain as { skill_focus?: string; teaching_strategy?: string } | undefined;
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content,
+      corrections,
+      voiceScores,
+      teachingMode,
+      skillFocus: teacherBrain?.skill_focus,
+      teachingStrategy: teacherBrain?.teaching_strategy,
+    }]);
     if (autoSpeak && ttsSupported) speak(content);
   }
 
@@ -117,6 +128,7 @@ export default function ConversationPage() {
         corrections: res.corrections,
         voice_scores: res.voice_scores,
         teaching_mode: res.teaching_mode,
+        teacher_brain: (res as { teacher_brain?: { skill_focus?: string; teaching_strategy?: string } }).teacher_brain,
         ...res.assistant_message.metadata,
       });
     } catch (err) {
@@ -277,6 +289,16 @@ export default function ConversationPage() {
                     )}
                     {msg.teachingMode && msg.teachingMode !== 'none' && (
                       <p className="mt-1 text-xs opacity-70">Teaching: {msg.teachingMode}</p>
+                    )}
+                    {msg.skillFocus && (
+                      <span className="mt-1 inline-block text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                        Focus: {msg.skillFocus}
+                      </span>
+                    )}
+                    {msg.teachingStrategy && (
+                      <span className="mt-1 inline-block text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded ml-1">
+                        Strategy: {msg.teachingStrategy.replace(/_/g, ' ')}
+                      </span>
                     )}
                     {msg.role === 'assistant' && ttsSupported && (
                       <button type="button" onClick={() => speak(msg.content)}

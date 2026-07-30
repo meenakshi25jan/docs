@@ -73,6 +73,7 @@ async def run_conversation_turn(
             "agents_skipped": result.get("agents_skipped"),
             "model_tier": result.get("model_tier"),
             "teaching_mode": result.get("teaching_mode"),
+            "teacher_brain": result.get("teacher_brain"),
             "cognitive_trace": result.get("cognitive_trace"),
             "orchestration": "cognitive",
         }

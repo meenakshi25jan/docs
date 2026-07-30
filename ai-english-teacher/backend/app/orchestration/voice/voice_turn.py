@@ -106,6 +106,7 @@ async def run_voice_turn(
     })
 
     latency_ms = int((time.perf_counter() - started) * 1000)
+    teacher_brain_meta = output.data.get("teacher_brain") or (output.metadata or {}).get("teacher_brain")
 
     return {
         "transcript": final_transcript,
@@ -128,6 +129,7 @@ async def run_voice_turn(
             "label": "estimate",
         },
         "analysis_id": voice_result.get("analysis_id"),
+        "teacher_brain": teacher_brain_meta,
         "agent_output": output.data,
         "metadata": {
             **(output.metadata or {}),

@@ -174,22 +174,37 @@ async def execute_teacher_brain(
     intent: str,
     trace: CognitiveTrace,
 ) -> dict[str, Any]:
-    from app.orchestration.conversation_agent import ConversationAgent
+    from app.orchestration.teacher_brain.teacher_brain_service import TeacherBrainService
+    from app.orchestration.teacher_brain.schemas import TeacherBrainInput
 
     started = time.perf_counter()
-    conversation_agent = ConversationAgent()
+    enriched_context = dict(context)
+    enriched_context.setdefault("memory_bundle", {
+        "recurring_mistakes": enriched_context.get("recurring_mistakes", []),
+        "learning_mistakes": enriched_context.get("recent_errors", []),
+    })
+    is_voice = bool(enriched_context.get("voice_summary") and enriched_context.get("voice_summary") != "not available")
 
+    tb_input = TeacherBrainInput.from_teacher_context(
+        enriched_context,
+        learner_id=learner_id,
+        tenant_id=tenant_id,
+        orchestration_intent=intent,
+        is_voice_turn=is_voice,
+        session_id=str(enriched_context.get("orchestration_trace_id", "")),
+    )
+
+    service = TeacherBrainService()
     try:
-        if intent == "greeting":
-            out = await conversation_agent.execute(AgentInput(
-                learner_id=learner_id, tenant_id=tenant_id, context=context,
-            ))
-        else:
-            out = await AGENT_REGISTRY["teacher"].execute(AgentInput(
-                learner_id=learner_id, tenant_id=tenant_id, context=context,
-            ))
+        result = await service.process_turn(
+            tb_input,
+            agent_context=enriched_context,
+            learner_id=learner_id,
+            tenant_id=tenant_id,
+            use_conversation_agent=intent == "greeting",
+        )
         trace.record_agent("teacher_brain", int((time.perf_counter() - started) * 1000), True)
-        return out.data
+        return result.agent_output
     except Exception as exc:  # noqa: BLE001
         trace.record_agent("teacher_brain", int((time.perf_counter() - started) * 1000), False)
         trace.record_error("teacher_brain", str(exc))

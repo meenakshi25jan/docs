@@ -187,6 +187,7 @@ async def voice_turn_in_conversation(
         "corrections": result.get("corrections", []),
         "voice_scores": result.get("voice_scores"),
         "estimates": result.get("estimates"),
+        "teacher_brain": result.get("teacher_brain"),
         "user_message": MessageResponse(role="user", content=transcript),
         "assistant_message": MessageResponse(
             role="assistant",

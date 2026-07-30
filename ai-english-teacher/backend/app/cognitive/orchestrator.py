@@ -267,6 +267,7 @@ class CognitiveOrchestrator:
             "teaching_mode": state.voice.teaching_mode,
             "voice_analysis": state.voice.voice_analysis,
             "agent_output": brain_output,
+            "teacher_brain": brain_output.get("teacher_brain"),
             "cognitive_trace": trace.to_dict(),
             "memory_domains": memory_bundle.get("domains_queried", []),
         }
