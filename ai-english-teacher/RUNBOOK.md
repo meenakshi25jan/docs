@@ -9,7 +9,7 @@
 | API docs | https://ai-english-teacher-api.onrender.com/docs |
 | Health | https://ai-english-teacher-api.onrender.com/health |
 
-**Deploy branch:** `main` (recommended) · voice-first: `cursor/voice-first-redesign-f37f` · infra baseline: `cursor/cheapest-cloud-deploy-d164`  
+**Deploy branch:** `main` (Phases 0–11) · feature preview: `cursor/reliability-observability-v1-f37f`  
 **Repo:** `meenakshi25jan/docs` → folder `ai-english-teacher/`  
 **Platform mode:** Voice-first conversational teacher (PRD v2) — unified voice turns, teaching personas, lesson reports
 
@@ -1919,6 +1919,144 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
 
 ---
 
+## 27. Reliability & Observability v1
+
+**Branch:** `cursor/reliability-observability-v1-f37f`  
+**Scope:** Monitoring, diagnostics, structured logging, request traceability, backup verification, and operational visibility — no new product features.
+
+### Purpose
+
+Operate the platform safely after deployment: correlate requests, inspect logging/backup/performance posture, and run lightweight operational smoke tooling.
+
+### Request IDs (`X-Request-ID`)
+
+- Middleware generates a UUID when the header is absent.
+- Incoming `X-Request-ID` is respected and echoed on the response.
+- Request ID is bound to logging context (`request_id` in log lines / JSON logs).
+- Safe for Render — no external tracing dependency.
+
+Verify:
+
+```bash
+curl -sI https://ai-english-teacher-api.onrender.com/health | grep -i x-request-id
+curl -sI -H "X-Request-ID: my-trace-001" \
+  https://ai-english-teacher-api.onrender.com/health | grep -i x-request-id
+```
+
+### Logging strategy
+
+Centralized `setup_logging()` on app startup:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `LOG_LEVEL` | `INFO` | Root log level |
+| `LOG_JSON_FORMAT` | `false` | `true` for JSON lines (Render log drains) |
+
+Text format: `timestamp level [request_id] logger: message`  
+JSON includes: `timestamp`, `level`, `request_id`, `logger`, `message`.
+
+### Reliability APIs (admin / super_admin, read-only)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/reliability/status` | Aggregate reliability + observability snapshot |
+| `GET /api/v1/reliability/logging` | Logging configuration status |
+| `GET /api/v1/reliability/backup` | Backup readiness + DB probe |
+| `GET /api/v1/reliability/performance` | Load smoke tooling availability |
+
+```bash
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  $API/api/v1/reliability/status
+```
+
+### Backup verification
+
+Non-destructive script — verifies `DATABASE_URL`, `schema_migrations`, tenant count, and `SELECT 1`:
+
+```bash
+cd ai-english-teacher/backend
+export DATABASE_URL='postgresql://...?sslmode=require'   # Neon connection string
+./scripts/backup_verify.sh
+```
+
+**Neon:** use the primary branch connection string from Neon dashboard; run before major migrations or before promoting staging to production. Pair with Neon branch snapshots / PITR (see §26).
+
+Exit codes: `0` success, `1` failure.
+
+### Load smoke test
+
+Lightweight sequential + small concurrency checks (not stress testing):
+
+```bash
+cd ai-english-teacher/backend
+export API_BASE_URL=https://ai-english-teacher-api.onrender.com
+export ADMIN_TOKEN=your_admin_jwt
+# optional: CONCURRENCY=2 ROUNDS=1
+python3 scripts/load_smoke.py
+```
+
+Targets: `/health`, `/api/v1/production/readiness`, `/api/v1/operations/health`.
+
+### Sentry (optional)
+
+| Variable | Purpose |
+|----------|---------|
+| `SENTRY_DSN` | Optional error reporting — detection only in v1 (no hard SDK dependency) |
+
+Reliability `/status` reports `sentry_configured` when set.
+
+### Extended production smoke
+
+`scripts/production_smoke_test.py` now also checks:
+
+- Reliability APIs (`/reliability/*`)
+- `X-Request-ID` generation and propagation
+- Security APIs (`/security/summary`, `/rls`, `/auth`, `/authorization`)
+- Operations APIs (`/operations/health`, `/operations/overview`)
+- Student RBAC negatives (403) on protected routes
+
+```bash
+python3 scripts/production_smoke_test.py
+```
+
+### Operational troubleshooting
+
+1. **Missing request ID in logs** — confirm middleware active; check response headers on `/health`.
+2. **Reliability backup warnings** — run `backup_verify.sh`; confirm migrations applied.
+3. **Performance warnings** — run `load_smoke.py`; inspect latency summary JSON.
+4. **Sentry warning** — optional; set `SENTRY_DSN` or ignore for pilot.
+5. **Degraded `/health`** — Neon connectivity, `DATABASE_URL`, Render logs (see §26 incident list).
+
+### Reliability smoke checklist (staging / post-deploy)
+
+1. Call all `/api/v1/reliability/*` endpoints (admin token) → 200
+2. Verify `X-Request-ID` on `/health`
+3. `python3 scripts/production_smoke_test.py` → all PASS
+4. `./scripts/backup_verify.sh` → exit 0
+5. `python3 scripts/load_smoke.py` → `failures: 0`
+6. Confirm no regressions on existing APIs (`/health`, `/production/readiness`, `/security/summary`)
+
+### Automated staging validation
+
+After setting `API_BASE_URL`, `ADMIN_TOKEN`, and optionally `DATABASE_URL`, `STUDENT_TOKEN`, `TEACHER_TOKEN`:
+
+```bash
+cd ai-english-teacher/backend
+python3 scripts/staging_validation.py
+```
+
+Runs health, readiness, reliability, migration/RLS API checks, `production_smoke_test.py`, `backup_verify.sh`, and `load_smoke.py`; prints JSON + recommendation (`GO TO PILOT` / `CONDITIONAL GO` / `NO-GO`).
+
+### Known limitations (v1)
+
+- No OpenTelemetry / distributed tracing
+- No PagerDuty / Datadog / New Relic integration
+- No full Sentry SDK rollout
+- Load smoke is lightweight only — not capacity testing
+- Governance audit remains in-process memory
+
+---
+
 ## Related docs
 
 | Doc | Path |
@@ -1937,4 +2075,4 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
 
 ---
 
-*Last updated: Production Readiness v1 · branch `cursor/production-readiness-v1-f37f` · stack: Render + Neon + Next.js proxy*
+*Last updated: Reliability & Observability v1 · branch `cursor/reliability-observability-v1-f37f` · stack: Render + Neon + Next.js proxy*

@@ -1,11 +1,16 @@
 from contextlib import asynccontextmanager
 
+import logging
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
 from app.core.config import get_settings
+from app.core.logging_config import setup_logging
+from app.core.middleware import RequestIdMiddleware
+from app.core.request_context import get_request_id
 from app.services.health_service import probe_database, validate_production_jwt_secret
 from app.api.v1.auth import router as auth_router
 from app.api.v1.assessments import router as assessments_router
@@ -27,12 +32,15 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.operations import router as operations_router
 from app.api.v1.security import router as security_router
 from app.api.v1.production import router as production_router
+from app.api.v1.reliability import router as reliability_router
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
     validate_production_jwt_secret()
     yield
 
@@ -53,6 +61,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestIdMiddleware)
 
 API_PREFIX = settings.API_V1_PREFIX
 app.include_router(auth_router, prefix=API_PREFIX)
@@ -73,6 +82,7 @@ app.include_router(analytics_router, prefix=API_PREFIX)
 app.include_router(operations_router, prefix=API_PREFIX)
 app.include_router(security_router, prefix=API_PREFIX)
 app.include_router(production_router, prefix=API_PREFIX)
+app.include_router(reliability_router, prefix=API_PREFIX)
 
 try:
     from prometheus_client import make_asgi_app
@@ -150,8 +160,10 @@ async def health_ai():
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
+    rid = getattr(request.state, "request_id", None) or get_request_id()
     if isinstance(exc, HTTPException):
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    logger.exception("unhandled_error request_id=%s path=%s", rid, request.url.path)
     if settings.DEBUG:
         content = {"detail": str(exc), "type": type(exc).__name__}
     else:
