@@ -91,6 +91,30 @@ except ImportError:
     pass
 
 
+@app.get("/health/live")
+async def health_live():
+    """Liveness probe — process is running (no dependency checks)."""
+    return {"status": "alive", "version": settings.APP_VERSION}
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """Readiness probe — database must be reachable when configured."""
+    db_probe = await probe_database()
+    db_status = db_probe["database"]
+    ready = db_status in ("reachable", "not_configured")
+    body: dict = {
+        "status": "ready" if ready else "not_ready",
+        "version": settings.APP_VERSION,
+        "database": db_status,
+    }
+    if db_probe.get("database_latency_ms") is not None:
+        body["database_latency_ms"] = db_probe["database_latency_ms"]
+    if not ready:
+        return JSONResponse(status_code=503, content=body)
+    return body
+
+
 @app.get("/health")
 async def health():
     """Health check with live database connectivity probe."""

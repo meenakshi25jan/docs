@@ -33,7 +33,12 @@ def prepare_asyncpg_url(database_url: str) -> tuple[str, dict[str, Any]]:
     query = dict(sa_url.query)
     connect_args: dict[str, Any] = {}
 
-    sslmode = query.pop("sslmode", None)
+    sslmode_raw = query.pop("sslmode", None)
+    sslmode = (
+        sslmode_raw
+        if isinstance(sslmode_raw, str)
+        else (sslmode_raw[0] if sslmode_raw else None)
+    )
     if "ssl" in query:
         ssl_val = query.pop("ssl")
         connect_args["ssl"] = ssl_val not in ("false", "0", "disable")

@@ -50,9 +50,13 @@ flowchart LR
 - [CI/CD](./CI_CD.md)
 - [Environment variables](./ENVIRONMENT.md)
 - [Render setup](./RENDER.md)
+- [Runbook](./RUNBOOK.md)
+- [Release process](./RELEASE.md)
+- [Disaster recovery](./DISASTER_RECOVERY.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
 - [Rollback](./ROLLBACK.md)
 - [Audit report](./AUDIT_REPORT.md)
+- [Final CI/CD report](./FINAL_REPORT.md)
 
 ## Fresh Render setup
 

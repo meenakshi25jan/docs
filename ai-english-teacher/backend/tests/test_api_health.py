@@ -129,6 +129,37 @@ class TestHealthEndpoints:
         assert data["password_hashing"] == "ok"
 
     @pytest.mark.asyncio
+    async def test_health_live_endpoint(self, public_client: AsyncClient):
+        res = await public_client.get("/health/live")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "alive"
+        assert "version" in data
+
+    @pytest.mark.asyncio
+    async def test_health_ready_when_reachable(self, public_client: AsyncClient):
+        with patch(
+            "app.main.probe_database",
+            return_value={"database": "reachable", "database_latency_ms": 3},
+        ):
+            res = await public_client.get("/health/ready")
+            assert res.status_code == 200
+            data = res.json()
+            assert data["status"] == "ready"
+            assert data["database"] == "reachable"
+
+    @pytest.mark.asyncio
+    async def test_health_ready_not_ready_when_unreachable(self, public_client: AsyncClient):
+        with patch(
+            "app.main.probe_database",
+            return_value={"database": "unreachable", "database_latency_ms": None},
+        ):
+            res = await public_client.get("/health/ready")
+            assert res.status_code == 503
+            data = res.json()
+            assert data["status"] == "not_ready"
+
+    @pytest.mark.asyncio
     async def test_health_ai_endpoint(self, public_client: AsyncClient):
         res = await public_client.get("/health/ai")
         assert res.status_code == 200

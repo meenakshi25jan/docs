@@ -13,7 +13,7 @@ A production-ready, cloud-native AI-powered English learning platform supporting
 | AI | Azure OpenAI GPT-5.5 (with OpenAI abstraction layer) |
 | Speech | Azure Speech Services + Whisper |
 | Auth | JWT, OAuth2 (Google, Microsoft) |
-| Deployment | Docker, Kubernetes (AKS/EKS), Terraform |
+| Deployment | Render + Neon (production); optional Docker/K8s |
 | Monitoring | Application Insights, Prometheus, Grafana |
 | CI/CD | GitHub Actions |
 

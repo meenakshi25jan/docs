@@ -8,7 +8,8 @@
     "postbuild": "cp -r .next/static .next/standalone/frontend/.next/static && cp -r public .next/standalone/frontend/public 2>/dev/null || true",
     "start": "node .next/standalone/frontend/server.js",
     "start:next": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "^15.1.0",

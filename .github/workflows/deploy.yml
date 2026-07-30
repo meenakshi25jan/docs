@@ -11,6 +11,10 @@ on:
         description: Run database migrations against DATABASE_URL secret
         type: boolean
         default: true
+      run_verify:
+        description: Run post-deploy verification against production URLs
+        type: boolean
+        default: true
 
 concurrency:
   group: ai-english-teacher-deploy
@@ -70,13 +74,16 @@ jobs:
           python3 scripts/migrate.py
 
       - name: Wait for Render deploy (initial)
+        if: github.event.inputs.run_verify != 'false'
         run: sleep 120
 
       - name: Post-deploy verification (with retries)
+        if: github.event.inputs.run_verify != 'false'
         env:
           DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
           DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
           TIMEOUT_SECONDS: '90'
+          DEPLOY_VERIFY_GRAMMAR_CLASS: ${{ vars.DEPLOY_VERIFY_GRAMMAR_CLASS || 'true' }}
         run: |
           for i in 1 2 3 4 5 6 8 10 12; do
             echo "Verification attempt $i..."
@@ -87,3 +94,18 @@ jobs:
           done
           echo "Deploy verification failed after retries"
           exit 1
+
+      - name: Performance smoke
+        if: github.event.inputs.run_verify != 'false'
+        env:
+          DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
+          DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
+          MAX_LATENCY_MS: '10000'
+        run: python3 ai-english-teacher/scripts/performance_smoke.py
+
+      - name: Deployment success notification
+        if: success()
+        run: |
+          echo "::notice title=Deploy Success::AI English Teacher deploy verification passed"
+          echo "Web: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}"
+          echo "API: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}"

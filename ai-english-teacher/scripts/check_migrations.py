@@ -52,7 +52,9 @@ async def check_database() -> list[str]:
     dsn, connect_args = prepare_asyncpg_dsn(url)
     conn = await asyncpg.connect(dsn, timeout=30, **connect_args)
     try:
-        rows = await conn.fetch("SELECT filename FROM schema_migrations ORDER BY filename")
+        rows = await conn.fetch(
+            "SELECT filename FROM schema_migrations ORDER BY filename"
+        )
         applied = {r["filename"] for r in rows}
         missing = [m for m in EXPECTED if m not in applied]
         if missing:
