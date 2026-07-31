@@ -1,4 +1,4 @@
-"""Run SQL migrations against PostgreSQL on startup."""
+"""Run SQL migrations against PostgreSQL on startup (not Alembic — plain *.sql files)."""
 
 import asyncio
 import os
@@ -15,22 +15,41 @@ def normalize_database_url(url: str) -> tuple[str, dict]:
     return prepare_asyncpg_dsn(url)
 
 
-async def run_migrations() -> None:
-    database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        print("DATABASE_URL not set — skipping migrations")
-        return
+def should_fail_on_error() -> bool:
+    env = os.environ.get("ENVIRONMENT", "").lower()
+    require = os.environ.get("REQUIRE_MIGRATIONS", "false").lower()
+    return env == "production" or require in ("1", "true", "yes")
 
-    database_url, connect_args = normalize_database_url(database_url)
+
+def resolve_migrations_dir() -> Path | None:
     migrations_dir = Path(os.environ.get("MIGRATIONS_DIR", ""))
     if not migrations_dir or not migrations_dir.exists():
         migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
     if not migrations_dir.exists():
         migrations_dir = Path(__file__).resolve().parents[2] / "database" / "migrations"
-
     if not migrations_dir.exists():
-        print(f"Migrations directory not found: {migrations_dir}")
+        return None
+    return migrations_dir
+
+
+async def run_migrations() -> None:
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("DATABASE_URL not set — skipping migrations")
+        if should_fail_on_error():
+            raise RuntimeError("DATABASE_URL required for migrations in production")
         return
+
+    migrations_dir = resolve_migrations_dir()
+    if migrations_dir is None:
+        msg = "Migrations directory not found"
+        print(msg)
+        if should_fail_on_error():
+            raise RuntimeError(msg)
+        return
+
+    database_url, connect_args = normalize_database_url(database_url)
+    print(f"Database connected (migrations dir: {migrations_dir})")
 
     conn = await asyncpg.connect(database_url, timeout=30, **connect_args)
     try:
@@ -46,17 +65,26 @@ async def run_migrations() -> None:
             for row in await conn.fetch("SELECT filename FROM schema_migrations")
         }
 
+        pending = sorted(
+            f for f in migrations_dir.glob("*.sql") if f.name not in applied
+        )
+        print(f"Pending migrations: {len(pending)}")
+        if pending:
+            for p in pending:
+                print(f"  pending {p.name}")
+
         for sql_file in sorted(migrations_dir.glob("*.sql")):
             if sql_file.name in applied:
                 print(f"  skip  {sql_file.name}")
                 continue
-            print(f"  apply {sql_file.name}")
+            print(f"Applying migration: {sql_file.name}")
             await conn.execute(sql_file.read_text())
             await conn.execute(
                 "INSERT INTO schema_migrations (filename) VALUES ($1)",
                 sql_file.name,
             )
-        print("Migrations complete")
+            print(f"  applied {sql_file.name}")
+        print("Migration complete")
     finally:
         await conn.close()
 
@@ -66,5 +94,5 @@ if __name__ == "__main__":
         asyncio.run(run_migrations())
     except Exception as e:
         print(f"Migration error: {e}", file=sys.stderr)
-        if os.environ.get("REQUIRE_MIGRATIONS", "false").lower() == "true":
+        if should_fail_on_error():
             sys.exit(1)

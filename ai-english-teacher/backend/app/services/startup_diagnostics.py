@@ -29,8 +29,18 @@ def collect_startup_diagnostics() -> dict[str, Any]:
     }
 
 
+def validate_production_migrations_policy() -> None:
+    """Fail fast if production would skip migrations (defense when uvicorn starts without start.sh)."""
+    env = os.environ.get("ENVIRONMENT", "").lower()
+    skip = os.environ.get("SKIP_MIGRATIONS", "false").lower() == "true"
+    if env == "production" and skip:
+        raise RuntimeError(
+            "SKIP_MIGRATIONS=true is forbidden in production. "
+            "Set SKIP_MIGRATIONS=false in render.yaml and remove any Render dashboard override."
+        )
+
+
 def log_startup_diagnostics() -> None:
+    validate_production_migrations_policy()
     diag = collect_startup_diagnostics()
-    if diag["skip_migrations"] and diag["environment"] == "production":
-        logger.error("startup_diagnostics: SKIP_MIGRATIONS=true in production is forbidden")
     logger.info("startup_diagnostics %s", diag)
