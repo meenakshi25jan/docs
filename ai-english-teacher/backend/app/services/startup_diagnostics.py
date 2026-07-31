@@ -44,3 +44,18 @@ def log_startup_diagnostics() -> None:
     validate_production_migrations_policy()
     diag = collect_startup_diagnostics()
     logger.info("startup_diagnostics %s", diag)
+
+
+def log_router_registration(app) -> None:
+    """Log mounted route count after routers are registered (call from main after include_router)."""
+    from fastapi import FastAPI
+
+    if not isinstance(app, FastAPI):
+        return
+    routes = [r.path for r in app.routes if hasattr(r, "path")]
+    api_routes = [p for p in routes if p.startswith("/api/")]
+    logger.info(
+        "startup_routes: total=%d api_v1=%d health=/health metrics=/metrics docs=/docs",
+        len(routes),
+        len(api_routes),
+    )

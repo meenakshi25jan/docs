@@ -13,7 +13,7 @@ from app.core.metrics import mount_prometheus_metrics
 from app.core.middleware import RequestIdMiddleware
 from app.core.request_context import get_request_id
 from app.services.health_service import probe_database, validate_production_jwt_secret
-from app.services.startup_diagnostics import log_startup_diagnostics
+from app.services.startup_diagnostics import log_router_registration, log_startup_diagnostics
 from app.api.v1.auth import router as auth_router
 from app.api.v1.assessments import router as assessments_router
 from app.api.v1.conversations import router as conversations_router
@@ -90,6 +90,7 @@ app.include_router(production_router, prefix=API_PREFIX)
 app.include_router(reliability_router, prefix=API_PREFIX)
 
 app.state.prometheus_metrics_mounted = mount_prometheus_metrics(app)
+log_router_registration(app)
 
 
 @app.get("/health/live")

@@ -53,7 +53,7 @@ def http_request(
 def register_test_user() -> tuple[str | None, str]:
     if not REGISTER_VERIFY:
         return None, "skipped"
-    email = f"postdeploy_{int(time.time())}@verify.local"
+    email = f"postdeploy_{int(time.time())}@example.com"
     payload = json.dumps(
         {
             "email": email,

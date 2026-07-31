@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-07-31T02:02:53.954906+00:00",
+  "web_base": "https://ai-english-teacher-web.onrender.com",
+  "api_base": "https://ai-english-teacher-api.onrender.com",
+  "failed": 2,
+  "passed": 8,
+  "checks": [
+    {
+      "name": "api_health",
+      "url": "https://ai-english-teacher-api.onrender.com/health",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "{\"status\":\"healthy\",\"version\":\"1.0.0\",\"database\":\"reachable\",\"database_latency_ms\":16}"
+    },
+    {
+      "name": "api_live",
+      "url": "https://ai-english-teacher-api.onrender.com/health/live",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "{\"status\":\"alive\",\"version\":\"1.0.0\"}"
+    },
+    {
+      "name": "api_ready",
+      "url": "https://ai-english-teacher-api.onrender.com/health/ready",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "{\"status\":\"ready\",\"version\":\"1.0.0\",\"database\":\"reachable\",\"database_latency_ms\":15}"
+    },
+    {
+      "name": "api_openapi",
+      "url": "https://ai-english-teacher-api.onrender.com/openapi.json",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"AI English Teacher\",\"version\":\"1.0.0\"},\"paths\":{\"/api/v1/auth/register\":{\"post\":{\"tags\":[\"Authentication\"],\"summary\":\"Register\",\"operationId\":\"register_api_v1_auth_register_post\",\"requestBody\":{\"content\":{\"applicat"
+    },
+    {
+      "name": "api_grammar_grades",
+      "url": "https://ai-english-teacher-api.onrender.com/api/v1/grammar/grades",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "[{\"grade\":5,\"label\":\"Grade 5\",\"age\":\"10\u201311\",\"cefr\":\"A1\",\"lesson_count\":3},{\"grade\":6,\"label\":\"Grade 6\",\"age\":\"11\u201312\",\"cefr\":\"A1\",\"lesson_count\":3},{\"grade\":7,\"label\":\"Grade 7\",\"age\":\"12\u201313\",\"cefr\":\"A2\",\"lesson_count\":3},{\"grade\":8,\"label\":\"Grade 8\",\""
+    },
+    {
+      "name": "web_home",
+      "url": "https://ai-english-teacher-web.onrender.com/",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "<!DOCTYPE html><!--WjWnTF_iSLNiPaqsi9n8e--><html lang=\"en\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/e4af272ccee01ff0-s.p.woff2\" as=\"font\" crossorig"
+    },
+    {
+      "name": "web_grammar_class",
+      "url": "https://ai-english-teacher-web.onrender.com/grammar-class",
+      "expected": 200,
+      "status": 404,
+      "passed": false,
+      "detail": "<!DOCTYPE html><!--WjWnTF_iSLNiPaqsi9n8e--><html lang=\"en\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/e4af272ccee01ff0-s.p.woff2\" as=\"font\" crossorig"
+    },
+    {
+      "name": "web_conversation",
+      "url": "https://ai-english-teacher-web.onrender.com/conversation",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "<!DOCTYPE html><!--WjWnTF_iSLNiPaqsi9n8e--><html lang=\"en\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/e4af272ccee01ff0-s.p.woff2\" as=\"font\" crossorig"
+    },
+    {
+      "name": "web_api_proxy",
+      "url": "https://ai-english-teacher-web.onrender.com/api/v1/grammar/grades",
+      "expected": 200,
+      "status": 200,
+      "passed": true,
+      "detail": "[{\"grade\":5,\"label\":\"Grade 5\",\"age\":\"10\u201311\",\"cefr\":\"A1\",\"lesson_count\":3},{\"grade\":6,\"label\":\"Grade 6\",\"age\":\"11\u201312\",\"cefr\":\"A1\",\"lesson_count\":3},{\"grade\":7,\"label\":\"Grade 7\",\"age\":\"12\u201313\",\"cefr\":\"A2\",\"lesson_count\":3},{\"grade\":8,\"label\":\"Grade 8\",\""
+    },
+    {
+      "name": "auth_register",
+      "passed": false,
+      "detail": "register failed HTTP 422: {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"email\"],\"msg\":\"value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.\",\"input\":"
+    }
+  ]
+}
