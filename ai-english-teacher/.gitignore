@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .venv/
 .env
+*.db
 
 # Node
 node_modules/
@@ -12,6 +13,8 @@ out/
 # IDE
 .idea/
 .vscode/
+!backend/.vscode/
+!backend/.vscode/**
 
 # OS
 .DS_Store
