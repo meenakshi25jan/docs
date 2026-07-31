@@ -130,6 +130,37 @@ backend/
 
 ```bash
 curl http://127.0.0.1:8000/health/live
+```
+
+## Windows PowerShell
+
+From `ai-english-teacher/backend`:
+
+```powershell
+# One-time setup (venv, deps, .env, migrations)
+.\setup.ps1
+
+# Setup + start server
+.\setup.ps1 -StartServer
+
+# Setup + run tests
+.\setup.ps1 -RunTests
+
+# After setup, start server only
+.\run.ps1
+
+# After setup, run tests only
+.\test.ps1
+```
+
+If script execution is blocked:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+```bash
+curl http://127.0.0.1:8000/health/live
 
 curl -X POST http://127.0.0.1:8000/auth/register \
   -H "Content-Type: application/json" \
