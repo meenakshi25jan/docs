@@ -129,12 +129,22 @@ def main() -> int:
         )
         if not has_grammar:
             failed += 1
-            print("[FAIL] web_build_info_grammar_class: /grammar-class not in routes list")
+            print(
+                "[FAIL] web_build_info_grammar_class: /grammar-class not in routes list"
+            )
         else:
-            print("[PASS] web_build_info_grammar_class: route listed in build-info.json")
+            print(
+                "[PASS] web_build_info_grammar_class: route listed in build-info.json"
+            )
     except json.JSONDecodeError:
         failed += 1
-        checks.append({"name": "web_build_info_grammar_class", "passed": False, "detail": "invalid JSON"})
+        checks.append(
+            {
+                "name": "web_build_info_grammar_class",
+                "passed": False,
+                "detail": "invalid JSON",
+            }
+        )
         print("[FAIL] web_build_info_grammar_class: invalid build-info.json")
 
     token, reg_msg = register_test_user()

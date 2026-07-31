@@ -48,7 +48,9 @@ def main() -> int:
             errors.append(f"missing required config: {needle}")
 
     for pattern, msg in FORBIDDEN_PRODUCTION:
-        scope = web_text if "docker" in pattern.lower() and "SKIP" not in pattern else text
+        scope = (
+            web_text if "docker" in pattern.lower() and "SKIP" not in pattern else text
+        )
         if re.search(pattern, scope, re.I):
             errors.append(msg)
 
