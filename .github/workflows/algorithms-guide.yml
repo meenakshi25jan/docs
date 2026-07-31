@@ -1,0 +1,27 @@
+name: Algorithms Guide Tests
+
+on:
+  push:
+    paths:
+      - 'comprehensive-algorithms-guide/**'
+  pull_request:
+    paths:
+      - 'comprehensive-algorithms-guide/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: comprehensive-algorithms-guide
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest numpy pandas scipy scikit-learn networkx matplotlib
+      - name: Run tests
+        run: python -m pytest tests/ -q --tb=short
