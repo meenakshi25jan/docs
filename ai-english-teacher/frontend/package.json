@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "cp -r .next/static .next/standalone/frontend/.next/static && cp -r public .next/standalone/frontend/public 2>/dev/null || true && node -e \"require('fs').writeFileSync('public/build-info.json', JSON.stringify({commit: process.env.RENDER_GIT_COMMIT||process.env.GITHUB_SHA||'local', builtAt: new Date().toISOString()})); try { require('fs').cpSync('public/build-info.json', '.next/standalone/frontend/public/build-info.json'); } catch(e) {}\"",
+    "postbuild": "cp -r .next/static .next/standalone/frontend/.next/static && cp -r public .next/standalone/frontend/public 2>/dev/null || true && node -e \"require('fs').writeFileSync('public/build-info.json', JSON.stringify({commit: process.env.RENDER_GIT_COMMIT||process.env.GITHUB_SHA||'local', builtAt: new Date().toISOString()})); try { require('fs').cpSync('public/build-info.json', '.next/standalone/frontend/public/build-info.json'); } catch(e) {}\" && node scripts/verify-build-routes.js",
+    "verify:routes": "node scripts/verify-build-routes.js",
     "start": "node .next/standalone/frontend/server.js",
     "start:next": "next start",
     "lint": "next lint",

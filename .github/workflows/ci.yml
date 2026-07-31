@@ -134,14 +134,18 @@ jobs:
       - name: Build frontend and verify routes
         working-directory: ai-english-teacher/frontend
         run: |
-          npm run build 2>&1 | tee build.log
-          grep -q '/grammar-class' build.log || (echo "Missing /grammar-class route" && exit 1)
-          grep -q '/conversation' build.log || (echo "Missing /conversation route" && exit 1)
+          npm run build
+          npm run verify:routes
+          test -f .next/app-path-routes-manifest.json
+          grep -q '/grammar-class/page' .next/app-path-routes-manifest.json
       - name: Upload frontend build manifest
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build-manifest
-          path: ai-english-teacher/frontend/build.log
+          path: |
+            ai-english-teacher/frontend/build.log
+            ai-english-teacher/frontend/.next/app-path-routes-manifest.json
+          if-no-files-found: ignore
           retention-days: 14
 
   docker-build:

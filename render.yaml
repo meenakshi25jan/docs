@@ -61,7 +61,7 @@ services:
     branch: main
     autoDeploy: true
     rootDir: ai-english-teacher/frontend
-    buildCommand: npm ci && npm run build 2>&1 | tee build.log && grep -q '/grammar-class' build.log && node -e "const fs=require('fs');const p='.next/standalone/frontend/server.js';if(!fs.existsSync(p)) { console.error('Missing standalone server at',p); process.exit(1);} console.log('Standalone OK:',p); console.log('Routes OK: /grammar-class');"
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
