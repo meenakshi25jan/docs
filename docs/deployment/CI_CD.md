@@ -87,8 +87,8 @@ flowchart TD
 | Secret | Required | Purpose |
 |--------|----------|---------|
 | `DATABASE_URL` | For deploy migrations | Neon connection string |
-| `RENDER_DEPLOY_HOOK_API` | Optional | Trigger API redeploy |
-| `RENDER_DEPLOY_HOOK_WEB` | Optional | Trigger web redeploy |
+| `RENDER_DEPLOY_HOOK_API` | Recommended | Trigger API redeploy after CI (see `RENDER.md` → Deploy hooks) |
+| `RENDER_DEPLOY_HOOK_WEB` | Recommended | Trigger web redeploy after CI (see `RENDER.md` → Deploy hooks) |
 
 ### Variables (optional)
 

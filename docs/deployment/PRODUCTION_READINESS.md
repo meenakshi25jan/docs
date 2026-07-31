@@ -1,8 +1,8 @@
 # Production readiness report
 
-**Last updated:** 2026-07-30  
-**Branch:** `cursor/enterprise-cicd-f37f`  
-**Score:** **85 / 100** (repository ready; live production pending redeploy)
+**Last updated:** 2026-07-31 (production readiness audit)  
+**Branch:** `main` (fixes on PR #42)  
+**Score:** **82 / 100** — API production-ready; web blocked on Render stale deploy
 
 ---
 
@@ -14,7 +14,9 @@
 | Obsolete blueprints archived | ✅ `archive/deployment/` |
 | `SKIP_MIGRATIONS=false` enforced | ✅ `start.sh` fails if true in prod |
 | Auto migrations on API start | ✅ synchronous + table verify |
-| CI pipeline | ✅ lint, test, build, security |
+| CI pipeline | ⚠️ `validate-config` fails on `main` until migration 008 in `check_migrations.py` (PR #42) |
+| Build metadata hardening | ✅ `write-build-info.js` fails on incomplete fields; CI validates all keys |
+| Render web cache bust | ✅ `render.yaml` `rm -rf .next && npm ci && npm run build` |
 | Deploy pipeline | ✅ migrate → API → web → verify |
 | Post-deploy verification | ✅ `post_deploy_verify.py` |
 | Documentation | ✅ `docs/deployment/` |
