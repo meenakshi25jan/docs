@@ -17,9 +17,11 @@ from scripts.bootstrap_path import ensure_backend_on_sys_path, print_runtime_dia
 ensure_backend_on_sys_path()
 
 EXPECTED_TABLES = [
+    "schema_migrations",
     "users",
     "learner_profiles",
-    "schema_migrations",
+    "conversations",
+    "conversation_messages",
     "voice_analyses",
     "lesson_completions",
     "revision_schedule",
@@ -58,12 +60,16 @@ async def verify() -> list[str]:
             if not row:
                 errors.append(f"missing table: {table}")
 
-        applied = await conn.fetch("SELECT filename FROM schema_migrations ORDER BY filename")
+        applied = await conn.fetch(
+            "SELECT filename, applied_at FROM schema_migrations ORDER BY filename"
+        )
         filenames = {r["filename"] for r in applied}
         missing = [m for m in EXPECTED_MIGRATION_FILES if m not in filenames]
         if missing:
             errors.append(f"missing applied migrations: {missing}")
-        print(f"Applied migrations: {len(filenames)}")
+        print(f"Applied migrations: {len(filenames)}", flush=True)
+        for row in applied:
+            print(f"  {row['filename']} @ {row['applied_at']}", flush=True)
     finally:
         await conn.close()
     return errors
@@ -73,12 +79,11 @@ def main() -> int:
     print_runtime_diagnostics("verify_migrations_applied.py")
     errors = asyncio.run(verify())
     if errors:
-        print("Migration verification FAILED:")
+        print("Migration verification FAILED:", flush=True)
         for e in errors:
-            print(f"  - {e}")
+            print(f"  - {e}", flush=True)
         return 1
-    print("OK: all expected tables and migrations present")
-    print("Verification passed")
+    print("Migration verification passed", flush=True)
     return 0
 
 

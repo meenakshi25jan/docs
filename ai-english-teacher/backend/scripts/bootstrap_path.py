@@ -36,12 +36,30 @@ def resolve_migrations_dir() -> Path | None:
     return None
 
 
+def list_migration_files() -> list[Path]:
+    """Sorted SQL migration files from the resolved migrations directory."""
+    migrations_dir = resolve_migrations_dir()
+    if migrations_dir is None:
+        return []
+    return sorted(migrations_dir.glob("*.sql"))
+
+
 def print_runtime_diagnostics(label: str = "migration-bootstrap") -> None:
-    """Log cwd, PYTHONPATH, and path resolution for Render troubleshooting."""
+    """Log cwd, PYTHONPATH, Python runtime, and path resolution for Render troubleshooting."""
     migrations = resolve_migrations_dir()
-    print(f"==> [{label}] Current working directory: {os.getcwd()}", flush=True)
+    migration_files = list_migration_files()
+    print(f"==> [{label}] Working directory: {os.getcwd()}", flush=True)
+    print(f"==> [{label}] Python executable: {sys.executable}", flush=True)
+    print(
+        f"==> [{label}] Python version: {sys.version.split()[0]}",
+        flush=True,
+    )
     print(f"==> [{label}] PYTHONPATH: {os.environ.get('PYTHONPATH', '(not set)')}", flush=True)
     print(f"==> [{label}] Backend root: {BACKEND_ROOT}", flush=True)
     print(f"==> [{label}] Repository root: {REPO_ROOT}", flush=True)
-    print(f"==> [{label}] Migrations directory: {migrations or 'NOT FOUND'}", flush=True)
-    print(f"==> [{label}] sys.path (first 5): {sys.path[:5]}", flush=True)
+    print(
+        f"==> [{label}] Migrations directory: {migrations or 'NOT FOUND'}",
+        flush=True,
+    )
+    print(f"==> [{label}] Found {len(migration_files)} migration file(s)", flush=True)
+    print(f"==> [{label}] sys.path: {sys.path[:8]}", flush=True)

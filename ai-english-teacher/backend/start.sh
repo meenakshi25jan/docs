@@ -13,8 +13,11 @@ SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-false}"
 
 echo "==> Environment: ${ENVIRONMENT}"
 echo "==> SKIP_MIGRATIONS=${SKIP_MIGRATIONS}"
-echo "==> Current directory: $(pwd)"
+echo "==> Working directory: $(pwd)"
+echo "==> Python executable: $(command -v python3)"
+python3 --version
 echo "==> PYTHONPATH=${PYTHONPATH}"
+python3 -c "import sys; print('==> sys.path:', sys.path[:8])"
 
 if [ "${SKIP_MIGRATIONS}" = "true" ]; then
   echo "ERROR: SKIP_MIGRATIONS=true is not allowed in production deployments."
@@ -30,13 +33,12 @@ else
     echo "ERROR: DATABASE_URL is required to run migrations."
     exit 1
   fi
-  echo "==> Database URL configured"
+  echo "==> DATABASE_URL is set"
   echo "==> Running database migrations (python -m scripts.migrate)..."
   export REQUIRE_MIGRATIONS=true
   python3 -m scripts.migrate
   echo "==> Verifying migration tables and revision files..."
   python3 -m scripts.verify_migrations_applied
-  echo "==> Migration verification complete"
 fi
 
 echo "==> Launching FastAPI (uvicorn) on port ${PORT}..."

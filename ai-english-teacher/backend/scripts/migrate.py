@@ -14,6 +14,7 @@ if str(_BACKEND) not in sys.path:
 
 from scripts.bootstrap_path import (
     ensure_backend_on_sys_path,
+    list_migration_files,
     print_runtime_diagnostics,
     resolve_migrations_dir,
 )
@@ -47,15 +48,17 @@ async def run_migrations() -> None:
     migrations_dir = resolve_migrations_dir()
     if migrations_dir is None:
         msg = "Migrations directory not found"
-        print(msg)
+        print(msg, flush=True)
         if should_fail_on_error():
             raise RuntimeError(msg)
         return
 
-    database_url, connect_args = normalize_database_url(database_url)
-    print(f"Database connected (migrations dir: {migrations_dir})")
+    migration_files = list_migration_files()
+    print(f"Found {len(migration_files)} migration file(s) in {migrations_dir}", flush=True)
 
+    database_url, connect_args = normalize_database_url(database_url)
     conn = await asyncpg.connect(database_url, timeout=30, **connect_args)
+    print("Database connected", flush=True)
     try:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -67,25 +70,31 @@ async def run_migrations() -> None:
         applied = {
             row["filename"] for row in await conn.fetch("SELECT filename FROM schema_migrations")
         }
+        print(f"Applied migrations: {len(applied)}", flush=True)
 
-        pending = sorted(f for f in migrations_dir.glob("*.sql") if f.name not in applied)
-        print(f"Pending migrations: {len(pending)}")
-        if pending:
-            for p in pending:
-                print(f"  pending {p.name}")
+        pending = [f for f in migration_files if f.name not in applied]
+        print(f"Pending migrations: {len(pending)}", flush=True)
+        for p in pending:
+            print(f"  pending {p.name}", flush=True)
 
-        for sql_file in sorted(migrations_dir.glob("*.sql")):
+        for sql_file in migration_files:
             if sql_file.name in applied:
-                print(f"  skip  {sql_file.name}")
                 continue
-            print(f"Applying migration: {sql_file.name}")
-            await conn.execute(sql_file.read_text())
-            await conn.execute(
-                "INSERT INTO schema_migrations (filename) VALUES ($1)",
-                sql_file.name,
-            )
-            print(f"  applied {sql_file.name}")
-        print("Migration complete")
+            print(f"Applying {sql_file.name}...", flush=True)
+            try:
+                async with conn.transaction():
+                    await conn.execute(sql_file.read_text())
+                    await conn.execute(
+                        "INSERT INTO schema_migrations (filename) VALUES ($1)",
+                        sql_file.name,
+                    )
+            except Exception as exc:
+                print(f"✗ Failed {sql_file.name}: {exc}", flush=True)
+                raise
+            print(f"✓ Success {sql_file.name}", flush=True)
+            applied.add(sql_file.name)
+
+        print("Migration complete", flush=True)
     finally:
         await conn.close()
 
@@ -95,6 +104,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(run_migrations())
     except Exception as e:
-        print(f"Migration error: {e}", file=sys.stderr)
+        print(f"Migration error: {e}", file=sys.stderr, flush=True)
         if should_fail_on_error():
             sys.exit(1)
