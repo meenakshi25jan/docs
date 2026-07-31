@@ -23,7 +23,7 @@ REQUIRED_MARKERS = [
     "name: ai-english-teacher-web",
     "rootDir: ai-english-teacher/backend",
     "rootDir: ai-english-teacher/frontend",
-    "./start.sh",
+    "bash ./start.sh",
     "SKIP_MIGRATIONS",
     '"false"',
     "npm ci && npm run build",

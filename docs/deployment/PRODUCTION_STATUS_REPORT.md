@@ -28,7 +28,7 @@
 ## Startup flow
 
 ```text
-Render ./start.sh
+Render bash ./start.sh
   → cd backend, export PYTHONPATH
   → validate DATABASE_URL, SKIP_MIGRATIONS=false
   → python -m scripts.migrate (transactional SQL 001–008)

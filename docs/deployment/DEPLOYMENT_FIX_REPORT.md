@@ -13,7 +13,7 @@
 
 ## Repository changes
 
-1. **`render.yaml`** — API uses `./start.sh`, `SKIP_MIGRATIONS=false`, web build verifies standalone server path
+1. **`render.yaml`** — API uses `bash ./start.sh`, `SKIP_MIGRATIONS=false`, web build verifies standalone server path
 2. **`optional_tables.py`** — queries against optional migration tables return empty data instead of 500
 3. **`frontend/Dockerfile`** — correct standalone path (`frontend/server.js`)
 4. **`diagnose_deployment.py`** — automated local + production diagnosis

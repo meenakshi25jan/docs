@@ -21,8 +21,13 @@ REQUIRED_WEB = {
 REQUIRED_API = {
     "name: ai-english-teacher-api",
     "rootDir: ai-english-teacher/backend",
-    "./start.sh",
+    "bash ./start.sh",
 }
+
+FORBIDDEN_API_START = [
+    re.compile(r"startCommand:\s*\./start\.sh\s*$", re.M),
+    re.compile(r"startCommand:\s*sh\s+\./start\.sh", re.M),
+]
 
 FORBIDDEN_WEB = [
     "dockerfilePath: backend/Dockerfile",
@@ -60,6 +65,11 @@ def main() -> int:
     if not re.search(r"name:\s*ai-english-teacher-web", text):
         errors.append("Missing web service name")
     api_part = text.split("ai-english-teacher-web", 1)[0]
+    for pattern in FORBIDDEN_API_START:
+        if pattern.search(api_part):
+            errors.append(
+                "API startCommand must be bash ./start.sh (not ./start.sh or sh ./start.sh)"
+            )
     if "SKIP_MIGRATIONS" in api_part:
         mig_section = api_part.split("SKIP_MIGRATIONS", 1)[1][:60]
         if re.search(r"value:\s*[\"']?true", mig_section, re.I):

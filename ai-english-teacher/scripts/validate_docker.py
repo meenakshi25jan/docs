@@ -28,6 +28,10 @@ def check_backend(path: Path) -> list[str]:
         )
     if "requirements-render.txt" not in text and "requirements.txt" not in text:
         errors.append(f"{path}: missing requirements install")
+    if re.search(r"CMD\s*\[\s*['\"]\./start\.sh['\"]", text):
+        errors.append(f"{path}: CMD must be [\"bash\", \"./start.sh\"] not [\"./start.sh\"]")
+    if "chmod +x start.sh" not in text:
+        errors.append(f"{path}: missing RUN chmod +x start.sh")
     return errors
 
 

@@ -21,9 +21,9 @@ Go to **Settings** → **Build & Deploy**
 pip install -r requirements-render.txt && mkdir -p migrations && cp -r ../database/migrations/* migrations/ 2>/dev/null || true
 ```
 
-**Start Command** — paste exactly:
+**Start Command** — paste exactly (must use **bash** — Render `/bin/sh` is dash and cannot run `pipefail`):
 ```
-./start.sh
+bash ./start.sh
 ```
 
 **Root Directory:** `ai-english-teacher/backend`

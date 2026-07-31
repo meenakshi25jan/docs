@@ -16,6 +16,7 @@
 |---------|--------|
 | Runtime | Python |
 | Root | `ai-english-teacher/backend` |
+| Start | `bash ./start.sh` (required — do not use `./start.sh`; see `SHELL_COMPATIBILITY.md`) |
 | Health check | `/health` |
 
 ### Web — `ai-english-teacher-web`
