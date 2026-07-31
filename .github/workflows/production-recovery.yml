@@ -1,0 +1,168 @@
+name: Production Recovery (One-Click)
+
+# Automates: validate → migrate → deploy API → wait → deploy web (clear cache) → verify
+# Prerequisites: GitHub Actions secrets (see docs/deployment/AUTOMATED_RECOVERY.md)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: Run Neon migrations from DATABASE_URL secret
+        type: boolean
+        default: true
+      clear_web_cache:
+        description: Clear web build cache on deploy (fixes /grammar-class 404)
+        type: boolean
+        default: true
+      wait_timeout_minutes:
+        description: Max minutes to wait per service for health
+        type: number
+        default: 10
+
+concurrency:
+  group: production-recovery
+  cancel-in-progress: false
+
+env:
+  DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
+  DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      has_database_url: ${{ steps.check.outputs.has_database_url }}
+      has_api_hook: ${{ steps.check.outputs.has_api_hook }}
+      has_web_hook: ${{ steps.check.outputs.has_web_hook }}
+      has_render_api: ${{ steps.check.outputs.has_render_api }}
+    steps:
+      - name: Check configured secrets
+        id: check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          check() { [ -n "$1" ] && echo "true" || echo "false"; }
+          echo "has_database_url=$(check "$DATABASE_URL")" >> "$GITHUB_OUTPUT"
+          echo "has_api_hook=$(check "$RENDER_DEPLOY_HOOK_API")" >> "$GITHUB_OUTPUT"
+          echo "has_web_hook=$(check "$RENDER_DEPLOY_HOOK_WEB")" >> "$GITHUB_OUTPUT"
+          echo "has_render_api=$(check "$RENDER_API_KEY")" >> "$GITHUB_OUTPUT"
+          echo "## Preflight" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Secret | Set |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-----|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| DATABASE_URL | $(check "$DATABASE_URL") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| RENDER_DEPLOY_HOOK_API | $(check "$RENDER_DEPLOY_HOOK_API") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| RENDER_DEPLOY_HOOK_WEB | $(check "$RENDER_DEPLOY_HOOK_WEB") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| RENDER_API_KEY | $(check "$RENDER_API_KEY") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Blueprint: click **Manual sync** in Render if Resources are wrong." >> "$GITHUB_STEP_SUMMARY"
+
+  recover:
+    needs: preflight
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate render.yaml and environment
+        run: |
+          python3 ai-english-teacher/scripts/validate_render_config.py
+          python3 ai-english-teacher/scripts/validate_environment.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run database migrations
+        if: github.event.inputs.run_migrations != 'false'
+        working-directory: ai-english-teacher/backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL not set — migrations will run on API via start.sh"
+          else
+            pip install -r requirements-render.txt
+            python3 scripts/migrate.py
+            python3 scripts/verify_migrations_applied.py
+          fi
+
+      - name: Trigger API deploy
+        env:
+          DEPLOY_TARGET: api
+          RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID_API: ${{ secrets.RENDER_SERVICE_ID_API }}
+        run: |
+          if python3 ai-english-teacher/scripts/trigger_render_deploy.py; then
+            echo "API deploy triggered"
+          else
+            echo "::warning::No API deploy hook/API key — rely on Blueprint autoDeploy or Manual Deploy"
+          fi
+
+      - name: Wait for API healthy
+        env:
+          WAIT_BASE_URL: ${{ env.DEPLOY_API_URL }}
+          WAIT_PATHS: /health/live,/health,/health/ready
+          WAIT_TIMEOUT: ${{ github.event.inputs.wait_timeout_minutes * 60 }}
+          WAIT_INTERVAL: '20'
+        run: python3 ai-english-teacher/scripts/wait_for_healthy.py
+
+      - name: Trigger Web deploy (clear build cache)
+        env:
+          DEPLOY_TARGET: web
+          CLEAR_WEB_BUILD_CACHE: ${{ github.event.inputs.clear_web_cache }}
+          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID_WEB: ${{ secrets.RENDER_SERVICE_ID_WEB }}
+        run: |
+          if python3 ai-english-teacher/scripts/trigger_render_deploy.py; then
+            echo "Web deploy triggered"
+          else
+            echo "::warning::No web deploy hook — use Render Dashboard Manual Deploy + Clear build cache"
+          fi
+
+      - name: Wait for Web healthy (/grammar-class)
+        env:
+          WAIT_BASE_URL: ${{ env.DEPLOY_WEB_URL }}
+          WAIT_PATHS: /,/grammar-class,/conversation
+          WAIT_TIMEOUT: ${{ github.event.inputs.wait_timeout_minutes * 60 }}
+          WAIT_INTERVAL: '20'
+        run: python3 ai-english-teacher/scripts/wait_for_healthy.py
+
+      - name: Post-deploy verification
+        env:
+          TIMEOUT_SECONDS: '90'
+          POST_DEPLOY_REGISTER_USER: 'true'
+          POST_DEPLOY_REPORT: post_deploy_report.json
+        run: |
+          for i in 1 2 3 4 5 6 8 10; do
+            echo "Verification attempt $i..."
+            if python3 ai-english-teacher/scripts/post_deploy_verify.py; then
+              exit 0
+            fi
+            sleep 30
+          done
+          exit 1
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-recovery-report
+          path: post_deploy_report.json
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Production Recovery" >> "$GITHUB_STEP_SUMMARY"
+          echo "Web: $DEPLOY_WEB_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "API: $DEPLOY_API_URL" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ All verification checks passed" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "❌ Recovery failed — download artifact **production-recovery-report**" >> "$GITHUB_STEP_SUMMARY"
+          fi

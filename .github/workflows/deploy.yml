@@ -62,16 +62,18 @@ jobs:
             python3 scripts/verify_migrations_applied.py
           fi
 
-      - name: Trigger Render API deploy hook
+      - name: Trigger Render API deploy
         if: >
           (github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_render != 'false') ||
           github.event_name == 'workflow_run'
         env:
+          DEPLOY_TARGET: api
           RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID_API: ${{ secrets.RENDER_SERVICE_ID_API }}
         run: |
-          if [ -n "$RENDER_DEPLOY_HOOK_API" ]; then
-            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_API"
-            echo "API deploy hook triggered"
+          if python3 ai-english-teacher/scripts/trigger_render_deploy.py; then
+            echo "API deploy triggered"
           else
             echo "RENDER_DEPLOY_HOOK_API not set — relying on Render autoDeploy from main"
           fi
@@ -85,16 +87,19 @@ jobs:
           WAIT_INTERVAL: '20'
         run: python3 ai-english-teacher/scripts/wait_for_healthy.py
 
-      - name: Trigger Render Web deploy hook
+      - name: Trigger Render Web deploy (clear build cache)
         if: >
           (github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_render != 'false') ||
           github.event_name == 'workflow_run'
         env:
+          DEPLOY_TARGET: web
+          CLEAR_WEB_BUILD_CACHE: 'true'
           RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID_WEB: ${{ secrets.RENDER_SERVICE_ID_WEB }}
         run: |
-          if [ -n "$RENDER_DEPLOY_HOOK_WEB" ]; then
-            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_WEB"
-            echo "Web deploy hook triggered"
+          if python3 ai-english-teacher/scripts/trigger_render_deploy.py; then
+            echo "Web deploy triggered (cache clear requested)"
           else
             echo "RENDER_DEPLOY_HOOK_WEB not set — relying on Render autoDeploy from main"
           fi
