@@ -1,7 +1,8 @@
 # Production status report — AI English Teacher API
 
-**Last verified:** 2026-07-31  
-**Stack:** FastAPI on Render, Neon PostgreSQL, SQL migrations via `scripts/migrate.py`
+**Last verified:** 2026-07-31 (Cloud Agent full audit)  
+**Git `main`:** `3f99de7a217496e82cba98a15b68ef8415aefc6e`  
+**Production web Next build ID:** `WjWnTF_iSLNiPaqsi9n8e` (stale — local build `U7i-UliQJEDrSOV4TeA_s`)
 
 ---
 
@@ -17,6 +18,8 @@
 | `/metrics` | ✅ Prometheus text |
 | DB APIs (student-intelligence, analytics) | ✅ 200 with auth |
 | Web `/grammar-class` | ❌ 404 — stale frontend build (not API) |
+| CI `validate-config` | ❌ Failed — `008` missing from `check_migrations.py` (PR #42) |
+| Deploy workflow | ⏭ Skipped — CI failure blocks `workflow_run` trigger |
 
 **Conclusion:** Backend is production-ready on Render. Remaining gap is **web** redeploy with clear build cache for `/grammar-class`.
 
@@ -105,3 +108,23 @@ Or manually:
 | `backend/scripts/bootstrap_path.py` | Import path |
 | `backend/scripts/verify_migrations_applied.py` | Table + migration check |
 | `scripts/post_deploy_verify.py` | End-to-end smoke |
+
+---
+
+## Final deployment checklist (2026-07-31)
+
+| Component | Status |
+|-----------|--------|
+| Latest commit deployed (web) | ❌ `3f99de7a2` not deployed — build `WjWnTF_iSLNiPaqsi9n8e` |
+| Latest commit deployed (API) | ✅ APIs healthy; migrations applied |
+| Build cache cleared | ❌ Manual action required on Render web |
+| Route manifest verified (local) | ✅ `/grammar-class` in manifest |
+| Standalone build verified (local) | ✅ `grammar-class.html` present |
+| `build-info.json` verified (local) | ✅ commit, routes, nextBuildId, builtAt |
+| `build-info.json` (production) | ❌ 404 |
+| `/grammar-class` | ❌ HTTP 404 |
+| Backend health | ✅ HTTP 200 |
+| Metrics | ✅ HTTP 307 → Prometheus |
+| Database migrations | ✅ 001–008 (via API smoke) |
+| SQL verification (direct) | ⏭ No `DATABASE_URL` in agent env |
+| CI pipeline | ❌ `validate-config` until PR #42 merges |
