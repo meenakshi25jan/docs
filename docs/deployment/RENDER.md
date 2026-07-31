@@ -2,7 +2,7 @@
 
 ## Create fresh (recommended if misconfigured)
 
-1. Delete old Blueprint and services (see `RENDER_FRESH_START.md`)
+1. Delete old Blueprint and services (see `ai-english-teacher/deploy/cheapest/RENDER_FRESH_START.md`)
 2. **Blueprints → New Blueprint Instance**
 3. Repo: `meenakshi25jan/docs`
 4. Branch: **`main`**

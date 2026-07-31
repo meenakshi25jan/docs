@@ -105,9 +105,11 @@ Other vars are set by `render.yaml` (`SKIP_MIGRATIONS`, `CORS_ORIGINS`, Groq URL
 | Root Directory | `ai-english-teacher/backend` |
 | Runtime | **Python** |
 | Build | `pip install -r requirements-render.txt` + migrations copy |
-| Start | `python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Start | `./start.sh` |
 
 **Manual Deploy** → wait **Live**.
+
+Confirm **Environment**: `SKIP_MIGRATIONS` = **`false`** (delete any `true` override).
 
 Test:
 
@@ -117,14 +119,20 @@ curl https://ai-english-teacher-api.onrender.com/health
 
 ---
 
-## Part D — Run database migrations (required)
+## Part D — Database migrations
 
-`SKIP_MIGRATIONS=true` on Render — run once from your machine:
+With `SKIP_MIGRATIONS=false`, `./start.sh` runs migrations on every API deploy.
+
+If you **kept the same Neon database**, migrations 001–008 should already be applied.
+
+Optional manual run from your machine:
 
 ```bash
 cd ai-english-teacher/backend
 export DATABASE_URL='postgresql://...?sslmode=require'
-python3 scripts/migrate.py
+export PYTHONPATH=.
+python3 -m scripts.migrate
+python3 -m scripts.verify_migrations_applied
 ```
 
 ---
@@ -148,8 +156,10 @@ Services → **ai-english-teacher-web**
 | Branch | `main` |
 | Root Directory | `ai-english-teacher/frontend` |
 | Runtime | **Node** |
-| Build Command | `npm ci && npm run build` |
+| Build Command | `rm -rf .next && npm ci && npm run build` |
 | Start Command | `npm start` |
+
+**Critical:** Build and Start are **two separate fields**. Do **not** put `npm start` in the Build Command.
 
 **No** `backend/Dockerfile` on the web service.
 
