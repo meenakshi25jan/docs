@@ -9,6 +9,7 @@ from sqlalchemy import select, text
 
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
+from app.core.metrics import mount_prometheus_metrics
 from app.core.middleware import RequestIdMiddleware
 from app.core.request_context import get_request_id
 from app.services.health_service import probe_database, validate_production_jwt_secret
@@ -44,6 +45,8 @@ async def lifespan(app: FastAPI):
     setup_logging()
     log_startup_diagnostics()
     validate_production_jwt_secret()
+    if not getattr(app.state, "prometheus_metrics_mounted", False):
+        logger.warning("startup: /metrics not mounted — install prometheus-client")
     yield
 
 
@@ -86,11 +89,7 @@ app.include_router(security_router, prefix=API_PREFIX)
 app.include_router(production_router, prefix=API_PREFIX)
 app.include_router(reliability_router, prefix=API_PREFIX)
 
-try:
-    from prometheus_client import make_asgi_app
-    app.mount("/metrics", make_asgi_app())
-except ImportError:
-    pass
+app.state.prometheus_metrics_mounted = mount_prometheus_metrics(app)
 
 
 @app.get("/health/live")
@@ -204,5 +203,6 @@ async def root():
         "version": settings.APP_VERSION,
         "docs": "/docs",
         "health": "/health",
+        "metrics": "/metrics",
         "api": settings.API_V1_PREFIX,
     }
