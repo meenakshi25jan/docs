@@ -16,7 +16,7 @@ services:
       mkdir -p migrations
       cp -r ../database/migrations/* migrations/ 2>/dev/null || true
       chmod +x start.sh
-    startCommand: ./start.sh
+    startCommand: bash ./start.sh
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

@@ -1,5 +1,6 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Production API startup — SQL migrations (migrate.py) before uvicorn.
+# Use bash (not /bin/sh) — dash on Render does not support `set -o pipefail`.
 # Never set SKIP_MIGRATIONS=true in production (Render dashboard overrides blueprint).
 set -euo pipefail
 
