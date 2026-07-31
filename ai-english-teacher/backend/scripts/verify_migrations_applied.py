@@ -8,9 +8,13 @@ import os
 import sys
 from pathlib import Path
 
-BACKEND = Path(__file__).resolve().parents[1]
-if str(BACKEND) not in sys.path:
-    sys.path.insert(0, str(BACKEND))
+_BACKEND = Path(__file__).resolve().parents[1]
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
+from scripts.bootstrap_path import ensure_backend_on_sys_path, print_runtime_diagnostics
+
+ensure_backend_on_sys_path()
 
 EXPECTED_TABLES = [
     "users",
@@ -54,9 +58,7 @@ async def verify() -> list[str]:
             if not row:
                 errors.append(f"missing table: {table}")
 
-        applied = await conn.fetch(
-            "SELECT filename FROM schema_migrations ORDER BY filename"
-        )
+        applied = await conn.fetch("SELECT filename FROM schema_migrations ORDER BY filename")
         filenames = {r["filename"] for r in applied}
         missing = [m for m in EXPECTED_MIGRATION_FILES if m not in filenames]
         if missing:
@@ -68,6 +70,7 @@ async def verify() -> list[str]:
 
 
 def main() -> int:
+    print_runtime_diagnostics("verify_migrations_applied.py")
     errors = asyncio.run(verify())
     if errors:
         print("Migration verification FAILED:")
@@ -75,6 +78,7 @@ def main() -> int:
             print(f"  - {e}")
         return 1
     print("OK: all expected tables and migrations present")
+    print("Verification passed")
     return 0
 
 

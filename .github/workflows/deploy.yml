@@ -52,14 +52,17 @@ jobs:
         working-directory: ai-english-teacher/backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: .
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "WARN: DATABASE_URL secret not set — skipping GitHub-side migrations"
             echo "Migrations will run via API start.sh on Render (SKIP_MIGRATIONS=false)"
           else
             pip install -r requirements-render.txt
-            python3 scripts/migrate.py
-            python3 scripts/verify_migrations_applied.py
+            mkdir -p migrations
+            cp -r ../database/migrations/* migrations/ 2>/dev/null || true
+            python3 -m scripts.migrate
+            python3 -m scripts.verify_migrations_applied
           fi
 
       - name: Trigger Render API deploy hook

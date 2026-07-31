@@ -3,12 +3,18 @@
 # Never set SKIP_MIGRATIONS=true in production (Render dashboard overrides blueprint).
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+export PYTHONPATH="${ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+
 PORT="${PORT:-8000}"
 ENVIRONMENT="${ENVIRONMENT:-production}"
 SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-false}"
 
 echo "==> Environment: ${ENVIRONMENT}"
 echo "==> SKIP_MIGRATIONS=${SKIP_MIGRATIONS}"
+echo "==> Current directory: $(pwd)"
+echo "==> PYTHONPATH=${PYTHONPATH}"
 
 if [ "${SKIP_MIGRATIONS}" = "true" ]; then
   echo "ERROR: SKIP_MIGRATIONS=true is not allowed in production deployments."
@@ -25,11 +31,11 @@ else
     exit 1
   fi
   echo "==> Database URL configured"
-  echo "==> Running database migrations (SQL via scripts/migrate.py)..."
+  echo "==> Running database migrations (python -m scripts.migrate)..."
   export REQUIRE_MIGRATIONS=true
-  python3 scripts/migrate.py
+  python3 -m scripts.migrate
   echo "==> Verifying migration tables and revision files..."
-  python3 scripts/verify_migrations_applied.py
+  python3 -m scripts.verify_migrations_applied
   echo "==> Migration verification complete"
 fi
 

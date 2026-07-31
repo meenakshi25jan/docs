@@ -13,11 +13,11 @@
 | **Symptom** | Deploy exits: `SKIP_MIGRATIONS=true is not allowed in production deployments` |
 | **Guard** | `start.sh` intentionally blocks production when `SKIP_MIGRATIONS=true` |
 | **Repo `render.yaml`** | Already sets `SKIP_MIGRATIONS: "false"` |
-| **Primary cause** | **Render dashboard env override** — service-level `SKIP_MIGRATIONS=true` overrides blueprint |
-| **Secondary causes (fixed in repo)** | Archived `render-backend.yaml`, `Dockerfile` ENV, outdated `RENDER_FIX.md` documented `true` |
+| **Import error** | `migrate.py` did not add backend to `sys.path` → `ModuleNotFoundError: app` → migrations never ran |
+| **Dashboard override** | Service-level `SKIP_MIGRATIONS=true` overrides blueprint `false` |
 | **Not Alembic** | `alembic` is a dependency only; deploy runs `migrate.py` on ordered `*.sql` files |
 
-**Conclusion:** Code and blueprint are correct on `main`. Production fails because the **running service** still has `SKIP_MIGRATIONS=true` from a dashboard override (or an old deploy before blueprint sync).
+**Conclusion:** Fix `sys.path` bootstrap so migrations run, ensure `SKIP_MIGRATIONS=false` (remove Render dashboard override if present), then redeploy.
 
 ---
 
@@ -30,7 +30,8 @@
 | `archive/deployment/ai-english-teacher-render.yaml.duplicate` | `true` → `false` |
 | `ai-english-teacher/backend/Dockerfile` | `ENV SKIP_MIGRATIONS=false` |
 | `ai-english-teacher/backend/start.sh` | Logging, `REQUIRE_MIGRATIONS`, dashboard hint |
-| `ai-english-teacher/backend/scripts/migrate.py` | Pending count, fail in production on error |
+| `ai-english-teacher/backend/scripts/bootstrap_path.py` | **NEW** — `sys.path`, diagnostics, migrations dir resolution |
+| `ai-english-teacher/backend/scripts/__init__.py` | Package for `python -m scripts.migrate` |
 | `ai-english-teacher/backend/app/services/startup_diagnostics.py` | `validate_production_migrations_policy()` |
 | `ai-english-teacher/deploy/cheapest/RENDER_FIX.md` | `false` + `./start.sh` |
 | `ai-english-teacher/scripts/validate_environment.py` | Reject Dockerfile `true` |
