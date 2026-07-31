@@ -1861,7 +1861,7 @@ Checks: `/health`, `/health/auth`, `/health/ai`, `/operations/health`, `/securit
 
 - [ ] Merge phase stack to target branch (`main` or staging branch)
 - [ ] Render API + Web services deployed
-- [ ] Render API start command is `./start.sh` with `SKIP_MIGRATIONS=false` (never `true` in production)
+- [ ] Render API start command is `bash ./start.sh` with `SKIP_MIGRATIONS=false` (never `true` in production)
 
 #### Post-deploy
 

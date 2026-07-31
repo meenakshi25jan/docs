@@ -64,7 +64,7 @@ Your frontend URL will be something like:
    - Or create a **Web Service** manually:
      - Root: `ai-english-teacher/backend`
      - Build: `pip install -r requirements-render.txt && mkdir -p migrations && cp -r ../database/migrations/* migrations/ && chmod +x start.sh`
-     - Start: `./start.sh`
+     - Start: `bash ./start.sh`
 4. Set environment variables:
 
 | Name | Value |

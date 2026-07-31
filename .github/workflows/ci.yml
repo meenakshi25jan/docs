@@ -42,6 +42,10 @@ jobs:
         run: python3 ai-english-teacher/scripts/validate_compose.py
       - name: Validate environment configuration
         run: python3 ai-english-teacher/scripts/validate_environment.py
+      - name: Validate shell scripts (bash / Render startup)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          python3 ai-english-teacher/scripts/validate_shell_scripts.py
 
   backend-quality:
     runs-on: ubuntu-latest

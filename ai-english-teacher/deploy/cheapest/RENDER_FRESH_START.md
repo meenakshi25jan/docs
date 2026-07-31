@@ -105,7 +105,7 @@ Other vars are set by `render.yaml` (`SKIP_MIGRATIONS`, `CORS_ORIGINS`, Groq URL
 | Root Directory | `ai-english-teacher/backend` |
 | Runtime | **Python** |
 | Build | `pip install -r requirements-render.txt` + migrations copy |
-| Start | `./start.sh` |
+| Start | `bash ./start.sh` |
 
 **Manual Deploy** → wait **Live**.
 
@@ -121,7 +121,7 @@ curl https://ai-english-teacher-api.onrender.com/health
 
 ## Part D — Database migrations
 
-With `SKIP_MIGRATIONS=false`, `./start.sh` runs migrations on every API deploy.
+With `SKIP_MIGRATIONS=false`, `bash ./start.sh` runs migrations on every API deploy.
 
 If you **kept the same Neon database**, migrations 001–008 should already be applied.
 

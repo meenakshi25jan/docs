@@ -33,7 +33,7 @@
 | `ai-english-teacher/backend/scripts/bootstrap_path.py` | **NEW** — `sys.path`, diagnostics, migrations dir resolution |
 | `ai-english-teacher/backend/scripts/__init__.py` | Package for `python -m scripts.migrate` |
 | `ai-english-teacher/backend/app/services/startup_diagnostics.py` | `validate_production_migrations_policy()` |
-| `ai-english-teacher/deploy/cheapest/RENDER_FIX.md` | `false` + `./start.sh` |
+| `ai-english-teacher/deploy/cheapest/RENDER_FIX.md` | `false` + `bash ./start.sh` |
 | `ai-english-teacher/scripts/validate_environment.py` | Reject Dockerfile `true` |
 | `ai-english-teacher/RUNBOOK.md` | Deploy checklist fix |
 
@@ -85,7 +85,7 @@ There is no separate `students` table; students are `users` with role `student`.
 - [ ] Blueprint **Manual sync** — uses root `render.yaml`
 - [ ] Resources: `ai-english-teacher-api` + `ai-english-teacher-web`
 - [ ] API **Environment**: **delete** `SKIP_MIGRATIONS=true` or set `false`
-- [ ] API **Start Command**: `./start.sh`
+- [ ] API **Start Command**: `bash ./start.sh` (not `./start.sh` — dash lacks `pipefail`)
 - [ ] Web **Runtime**: Node (not Docker)
 - [ ] **Manual Deploy** API after env fix
 
