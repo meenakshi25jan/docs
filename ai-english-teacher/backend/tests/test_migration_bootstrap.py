@@ -34,7 +34,7 @@ def test_migration_files_count() -> None:
     from scripts.bootstrap_path import list_migration_files
 
     files = list_migration_files()
-    assert len(files) == 7
+    assert len(files) == 8
     names = [f.name for f in files]
     assert names == [
         "001_initial_schema.sql",
@@ -44,4 +44,5 @@ def test_migration_files_count() -> None:
         "005_knowledge_and_voice.sql",
         "006_curriculum_intelligence.sql",
         "007_security_rls_hardening.sql",
+        "008_fix_knowledge_chunks_seed.sql",
     ]

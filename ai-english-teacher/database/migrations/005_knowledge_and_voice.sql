@@ -51,21 +51,21 @@ CREATE INDEX IF NOT EXISTS idx_learner_memories ON learner_memories(learner_id, 
 INSERT INTO knowledge_chunks (tenant_id, topic, source, content)
 SELECT NULL, v.topic, v.source, v.content
 FROM (VALUES
-(NULL, 'present perfect', 'Grammar Unit 4',
+('present perfect', 'Grammar Unit 4',
  'Present perfect connects past actions to now: have/has + past participle. Use for life experience, unfinished time, and recent past with present relevance.'),
-(NULL, 'articles', 'Grammar Unit 2',
+('articles', 'Grammar Unit 2',
  'Use a/an for non-specific singular nouns; the for specific nouns; omit articles with general plural or uncountable nouns in general statements.'),
-(NULL, 'conditionals', 'Grammar Unit 7',
+('conditionals', 'Grammar Unit 7',
  'Zero conditional: if + present, present (facts). First: if + present, will (real future). Second: if + past, would (hypothetical). Third: if + past perfect, would have (past hypothetical).'),
-(NULL, 'restaurant', 'Conversation Scenario',
+('restaurant', 'Conversation Scenario',
  'Useful phrases: Could I see the menu?, I would like to order..., Could we have the bill please?, Is service included?'),
-(NULL, 'job interview', 'Conversation Scenario',
+('job interview', 'Conversation Scenario',
  'Structure answers with STAR: Situation, Task, Action, Result. Use professional vocabulary and past tense for experience questions.'),
-(NULL, 'ielts writing', 'IELTS Prep',
+('ielts writing', 'IELTS Prep',
  'Task 2 essay: introduction with paraphrased question and thesis, two body paragraphs with topic sentences and examples, conclusion without new ideas.'),
-(NULL, 'travel', 'Conversation Scenario',
+('travel', 'Conversation Scenario',
  'At the airport: Where is the check-in counter?, I have a connecting flight., My luggage did not arrive on the carousel.'),
-(NULL, 'business meeting', 'Conversation Scenario',
+('business meeting', 'Conversation Scenario',
  'Open with agenda review, use phrases like Let us move on to..., Could you clarify..., I suggest we table this for now.')
 ) AS v(topic, source, content)
 WHERE NOT EXISTS (SELECT 1 FROM knowledge_chunks LIMIT 1);

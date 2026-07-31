@@ -36,6 +36,7 @@ EXPECTED_MIGRATION_FILES = [
     "005_knowledge_and_voice.sql",
     "006_curriculum_intelligence.sql",
     "007_security_rls_hardening.sql",
+    "008_fix_knowledge_chunks_seed.sql",
 ]
 
 
