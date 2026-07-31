@@ -7,6 +7,7 @@
 | CI | `.github/workflows/ci.yml` | Push/PR touching `ai-english-teacher/` or `render.yaml` |
 | Migrate | `.github/workflows/migrate.yml` | Manual |
 | Deploy | `.github/workflows/deploy.yml` | After CI succeeds on `main`, or manual |
+| Production Recovery | `.github/workflows/production-recovery.yml` | Manual one-click recovery |
 
 ## Pipeline diagram
 

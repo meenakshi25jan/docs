@@ -60,6 +60,7 @@ flowchart LR
 - [Deployment fix report](./DEPLOYMENT_FIX_REPORT.md)
 - [Production readiness](./PRODUCTION_READINESS.md)
 - [Final deployment report](./FINAL_DEPLOYMENT_REPORT.md)
+- [Automated recovery](./AUTOMATED_RECOVERY.md)
 
 ## Fresh Render setup
 
