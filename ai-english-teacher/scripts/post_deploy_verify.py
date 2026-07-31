@@ -88,6 +88,7 @@ def main() -> int:
         ("api_openapi", f"{API_BASE}/openapi.json", 200),
         ("api_grammar_grades", f"{API_BASE}/api/v1/grammar/grades", 200),
         ("web_home", f"{WEB_BASE}/", 200),
+        ("web_build_info", f"{WEB_BASE}/build-info.json", 200),
         ("web_grammar_class", f"{WEB_BASE}/grammar-class", 200),
         ("web_conversation", f"{WEB_BASE}/conversation", 200),
         ("web_api_proxy", f"{WEB_BASE}/api/v1/grammar/grades", 200),
@@ -112,6 +113,29 @@ def main() -> int:
             }
         )
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: HTTP {code}")
+
+    # build-info must list /grammar-class (stale deploy detection)
+    _, build_info_body = http_request(f"{WEB_BASE}/build-info.json")
+    try:
+        build_info = json.loads(build_info_body)
+        routes = build_info.get("routes") or []
+        has_grammar = "/grammar-class" in routes
+        checks.append(
+            {
+                "name": "web_build_info_grammar_class",
+                "passed": has_grammar,
+                "detail": f"commit={build_info.get('commit', '?')[:12]} nextBuildId={build_info.get('nextBuildId')}",
+            }
+        )
+        if not has_grammar:
+            failed += 1
+            print("[FAIL] web_build_info_grammar_class: /grammar-class not in routes list")
+        else:
+            print("[PASS] web_build_info_grammar_class: route listed in build-info.json")
+    except json.JSONDecodeError:
+        failed += 1
+        checks.append({"name": "web_build_info_grammar_class", "passed": False, "detail": "invalid JSON"})
+        print("[FAIL] web_build_info_grammar_class: invalid build-info.json")
 
     token, reg_msg = register_test_user()
     checks.append(

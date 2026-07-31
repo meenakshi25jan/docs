@@ -19,9 +19,12 @@ API grammar endpoints work: `/api/v1/grammar/grades` → 200.
 
 ## Permanent prevention
 
-1. `npm run build` → `postbuild` runs `scripts/verify-build-routes.js`
-2. CI checks `app-path-routes-manifest.json` for `/grammar-class`
-3. Render `buildCommand: npm ci && npm run build` (fails if route missing)
+1. `npm run build` → `postbuild.js` copies assets, writes `build-info.json`, runs `verify-build-routes.js`
+2. `verify-build-routes.js` discovers all routes from `src/app/**/page.tsx`, checks manifest + standalone for each
+3. CI `frontend` job fails if build or verify fails; `ci-success` blocks deploy workflow
+4. `post_deploy_verify.py` checks `/build-info.json` lists `/grammar-class` and `/grammar-class` returns 200
+
+Post-deploy: https://ai-english-teacher-web.onrender.com/build-info.json — confirm `commit` and `routes` include `/grammar-class`.
 
 ## Fix stale production
 

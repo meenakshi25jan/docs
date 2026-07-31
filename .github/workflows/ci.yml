@@ -135,17 +135,18 @@ jobs:
         working-directory: ai-english-teacher/frontend
         run: |
           npm run build
+          test -f public/build-info.json
+          test -f .next/standalone/frontend/public/build-info.json
+          grep -q '/grammar-class' public/build-info.json
           npm run verify:routes
-          test -f .next/app-path-routes-manifest.json
-          grep -q '/grammar-class/page' .next/app-path-routes-manifest.json
-      - name: Upload frontend build manifest
+      - name: Upload frontend build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build-manifest
           path: |
-            ai-english-teacher/frontend/build.log
+            ai-english-teacher/frontend/public/build-info.json
             ai-english-teacher/frontend/.next/app-path-routes-manifest.json
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 14
 
   docker-build:
