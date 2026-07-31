@@ -26,6 +26,13 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // Common misspelling / shorthand → canonical route
+      { source: '/grammer', destination: '/grammar-class', permanent: true },
+      { source: '/grammar', destination: '/grammar-class', permanent: false },
+    ];
+  },
 };
 
 module.exports = nextConfig;
