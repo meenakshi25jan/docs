@@ -137,7 +137,21 @@ jobs:
           npm run build
           test -f public/build-info.json
           test -f .next/standalone/frontend/public/build-info.json
-          grep -q '/grammar-class' public/build-info.json
+          node -e "
+          const fs=require('fs');
+          const p='public/build-info.json';
+          const d=JSON.parse(fs.readFileSync(p,'utf8'));
+          const req=['commit','builtAt','nextBuildId','routes','service'];
+          for (const k of req) {
+            if (d[k]==null||d[k]===''||(k==='routes'&&!Array.isArray(d.routes)||d.routes.length===0)) {
+              console.error('build-info missing field:',k); process.exit(1);
+            }
+          }
+          if (!d.routes.includes('/grammar-class')) {
+            console.error('build-info routes missing /grammar-class'); process.exit(1);
+          }
+          if (d.commit==='unknown') { console.error('build-info commit unknown'); process.exit(1); }
+          "
           npm run verify:routes
       - name: Upload frontend build artifacts
         uses: actions/upload-artifact@v4

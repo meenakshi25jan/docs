@@ -92,9 +92,9 @@ Or manually:
 
 | Risk | Mitigation |
 |------|------------|
-| Web `/grammar-class` 404 | Redeploy web + clear build cache |
-| Render env overrides | Audit API Environment tab |
-| Neon connection limits | Pool settings in `render.yaml` |
+| Web `/grammar-class` 404 | `render.yaml` now runs `rm -rf .next` before build; still redeploy web + clear cache |
+| Stale `build-info.json` on prod | Same web redeploy; `write-build-info.js` now fails build if metadata incomplete |
+| CI blocked on migration 008 | PR #42 — merge to restore `validate-config` |
 
 ---
 
@@ -117,7 +117,8 @@ Or manually:
 |-----------|--------|
 | Latest commit deployed (web) | ❌ `3f99de7a2` not deployed — build `WjWnTF_iSLNiPaqsi9n8e` |
 | Latest commit deployed (API) | ✅ APIs healthy; migrations applied |
-| Build cache cleared | ❌ Manual action required on Render web |
+| Build cache cleared | ❌ Manual Render action; `rm -rf .next` added to blueprint buildCommand |
+| `build-info.json` validation | ✅ `write-build-info.js` exits 1 on missing fields (verified) |
 | Route manifest verified (local) | ✅ `/grammar-class` in manifest |
 | Standalone build verified (local) | ✅ `grammar-class.html` present |
 | `build-info.json` verified (local) | ✅ commit, routes, nextBuildId, builtAt |

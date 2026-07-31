@@ -50,6 +50,40 @@ const info = {
   service: 'ai-english-teacher-web',
 };
 
+function validateBuildInfo(data) {
+  const errors = [];
+  if (!data.commit || data.commit === 'unknown') {
+    errors.push('commit (git SHA or RENDER_GIT_COMMIT)');
+  }
+  if (!data.builtAt || typeof data.builtAt !== 'string') {
+    errors.push('builtAt');
+  }
+  if (!data.nextBuildId || typeof data.nextBuildId !== 'string') {
+    errors.push('nextBuildId (.next/BUILD_ID missing)');
+  }
+  if (!Array.isArray(data.routes) || data.routes.length === 0) {
+    errors.push('routes (empty — manifest missing?)');
+  } else if (!data.routes.includes('/grammar-class')) {
+    errors.push('routes must include /grammar-class');
+  }
+  if (!data.service || typeof data.service !== 'string') {
+    errors.push('service');
+  }
+  if (errors.length) {
+    console.error('');
+    console.error('══════════════════════════════════════════════════════════');
+    console.error('write-build-info FAILED — incomplete build metadata');
+    for (const e of errors) {
+      console.error(`  - ${e}`);
+    }
+    console.error('Build aborted — fix metadata generation before deploy.');
+    console.error('══════════════════════════════════════════════════════════');
+    process.exit(1);
+  }
+}
+
+validateBuildInfo(info);
+
 const json = JSON.stringify(info, null, 2);
 fs.mkdirSync(path.dirname(OUT_PUBLIC), { recursive: true });
 fs.writeFileSync(OUT_PUBLIC, json);
