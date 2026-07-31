@@ -34,7 +34,7 @@ services:
       - key: CORS_ORIGINS
         value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
       - key: SKIP_MIGRATIONS
-        value: "true"
+        value: "false"
       - key: AI_PROVIDER
         value: openai
       - key: OPENAI_BASE_URL

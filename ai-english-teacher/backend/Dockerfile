@@ -14,7 +14,7 @@ COPY database/migrations /app/migrations
 
 RUN chmod +x start.sh
 
-ENV SKIP_MIGRATIONS=true
+ENV SKIP_MIGRATIONS=false
 EXPOSE 8000
 
 CMD ["./start.sh"]

@@ -37,6 +37,7 @@ services:
         value: "true"
       - key: CORS_ORIGINS
         value: '["https://ai-english-teacher-web.onrender.com","http://localhost:3000"]'
+      # Must be false — start.sh runs migrate.py before uvicorn (dashboard override wins over blueprint)
       - key: SKIP_MIGRATIONS
         value: "false"
       - key: AI_PROVIDER

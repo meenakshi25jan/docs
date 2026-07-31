@@ -13,6 +13,7 @@ RENDER = REPO_ROOT / "render.yaml"
 
 FORBIDDEN_PRODUCTION = [
     (r"SKIP_MIGRATIONS\s*\n\s*value:\s*[\"']?true", "SKIP_MIGRATIONS must be false"),
+    (r"ENV\s+SKIP_MIGRATIONS=true", "Dockerfile must not set SKIP_MIGRATIONS=true"),
     (r"runtime:\s*docker", "Web service must not use Docker runtime"),
     (r"dockerfilePath:\s*backend/Dockerfile", "Web must not use backend Dockerfile"),
 ]
@@ -47,8 +48,15 @@ def main() -> int:
             errors.append(f"missing required config: {needle}")
 
     for pattern, msg in FORBIDDEN_PRODUCTION:
-        if re.search(pattern, web_text if "docker" in pattern.lower() else text, re.I):
+        scope = web_text if "docker" in pattern.lower() and "SKIP" not in pattern else text
+        if re.search(pattern, scope, re.I):
             errors.append(msg)
+
+    dockerfile = REPO_ROOT / "ai-english-teacher" / "backend" / "Dockerfile"
+    if dockerfile.is_file():
+        df = dockerfile.read_text(encoding="utf-8")
+        if re.search(r"ENV\s+SKIP_MIGRATIONS=true", df, re.I):
+            errors.append("backend/Dockerfile must not set SKIP_MIGRATIONS=true")
 
     # CI / deploy secret hints (non-fatal)
     if os.environ.get("CI") == "true":

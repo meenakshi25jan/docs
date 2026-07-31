@@ -23,7 +23,7 @@ pip install -r requirements-render.txt && mkdir -p migrations && cp -r ../databa
 
 **Start Command** — paste exactly:
 ```
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+./start.sh
 ```
 
 **Root Directory:** `ai-english-teacher/backend`
@@ -42,7 +42,7 @@ Go to **Environment** tab:
 |-----|-------|
 | `DATABASE_URL` | Your Neon URL (must end with `?sslmode=require`) |
 | `PYTHON_VERSION` | `3.12.4` |
-| `SKIP_MIGRATIONS` | `true` |
+| `SKIP_MIGRATIONS` | **`false`** (delete any dashboard override set to `true`) |
 
 Example DATABASE_URL:
 ```
