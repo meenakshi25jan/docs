@@ -137,27 +137,20 @@ curl http://127.0.0.1:8000/health/live
 From `ai-english-teacher/backend`:
 
 ```powershell
-# One-time setup (venv, deps, .env, migrations)
-.\setup.ps1
+# Allow scripts (first time only)
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
-# Setup + start server
-.\setup.ps1 -StartServer
+# Setup + start API server (default)
+.\dev.ps1
 
 # Setup + run tests
-.\setup.ps1 -RunTests
+.\dev.ps1 -Test
 
-# After setup, start server only
-.\run.ps1
-
-# After setup, run tests only
-.\test.ps1
+# Setup only (no server)
+.\dev.ps1 -SetupOnly
 ```
 
-If script execution is blocked:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
+Server: http://127.0.0.1:8000 · Docs: http://127.0.0.1:8000/docs
 
 ```bash
 curl http://127.0.0.1:8000/health/live
