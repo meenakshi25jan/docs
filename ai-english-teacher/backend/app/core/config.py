@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     TTS_VOICE_FEMALE: str = "en-US-JennyNeural"
     TTS_VOICE_MALE: str = "en-US-GuyNeural"
 
+    # RAG embeddings (sentence-transformers/all-MiniLM-L6-v2 default — Grok does not provide vectors)
+    EMBEDDING_DIMENSION: int = 384
+
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     @field_validator("DATABASE_URL", mode="before")
