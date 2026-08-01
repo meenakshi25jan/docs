@@ -1,32 +1,31 @@
 [tool.black]
 line-length = 100
 target-version = ["py312"]
-include = '\.pyi?$'
-extend-exclude = '/(\.venv|__pycache__)/'
 
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-src = ["app", "scripts", "tests"]
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501", "W291", "W293"]
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["app"]
 
 [tool.mypy]
 python_version = "3.12"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
 ignore_missing_imports = true
-warn_unused_ignores = true
-exclude = ["tests/", "scripts/"]
+packages = ["app"]
+exclude = ["app/tests/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["app/tests"]
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["app"]
-omit = ["tests/*"]
+omit = ["app/tests/*"]
 
 [tool.coverage.report]
-fail_under = 50
+fail_under = 65
 show_missing = true

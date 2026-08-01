@@ -1,61 +1,50 @@
+import logging
+import time
 from contextlib import asynccontextmanager
 
-import logging
-
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from sqlalchemy import select, text
 
+from app.api import auth, conversation, health, users
 from app.core.config import get_settings
-from app.core.logging_config import setup_logging
-from app.core.metrics import mount_prometheus_metrics
-from app.core.middleware import RequestIdMiddleware
-from app.core.request_context import get_request_id
-from app.services.health_service import probe_database, validate_production_jwt_secret
-from app.services.startup_diagnostics import log_router_registration, log_startup_diagnostics
-from app.api.v1.auth import router as auth_router
-from app.api.v1.assessments import router as assessments_router
-from app.api.v1.conversations import router as conversations_router
-from app.api.v1.extended import (
-    writing_router,
-    plans_router,
-    dashboard_router,
-    reports_router,
-)
-from app.api.v1.voice import router as voice_router
-from app.api.v1.grammar_lessons import router as grammar_router
-from app.api.v1.student_intelligence import router as student_intelligence_router
-from app.api.v1.memory import router as memory_router
-from app.api.v1.curriculum import router as curriculum_router
-from app.api.v1.knowledge import router as knowledge_router
-from app.api.v1.governance import router as governance_router
-from app.api.v1.analytics import router as analytics_router
-from app.api.v1.operations import router as operations_router
-from app.api.v1.security import router as security_router
-from app.api.v1.production import router as production_router
-from app.api.v1.reliability import router as reliability_router
+from app.core.logging import setup_logging
+from app.core.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
+def _init_sentry() -> None:
+    if not settings.SENTRY_DSN:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.APP_ENV,
+            integrations=[FastApiIntegration()],
+            traces_sample_rate=0.1,
+        )
+        logger.info("Sentry initialized")
+    except Exception:
+        logger.exception("Failed to initialize Sentry")
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     setup_logging()
-    log_startup_diagnostics()
-    validate_production_jwt_secret()
-    if not getattr(app.state, "prometheus_metrics_mounted", False):
-        logger.warning("startup: /metrics not mounted — install prometheus-client")
+    _init_sentry()
+    logger.info("application_start app=%s env=%s", settings.APP_NAME, settings.APP_ENV)
     yield
 
 
 app = FastAPI(
     title=settings.APP_NAME,
-    version=settings.APP_VERSION,
+    version="0.3.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
 
@@ -66,144 +55,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(RequestIdMiddleware)
-
-API_PREFIX = settings.API_V1_PREFIX
-app.include_router(auth_router, prefix=API_PREFIX)
-app.include_router(assessments_router, prefix=API_PREFIX)
-app.include_router(conversations_router, prefix=API_PREFIX)
-app.include_router(writing_router, prefix=API_PREFIX)
-app.include_router(plans_router, prefix=API_PREFIX)
-app.include_router(dashboard_router, prefix=API_PREFIX)
-app.include_router(reports_router, prefix=API_PREFIX)
-app.include_router(voice_router, prefix=API_PREFIX)
-app.include_router(grammar_router, prefix=API_PREFIX)
-app.include_router(student_intelligence_router, prefix=API_PREFIX)
-app.include_router(memory_router, prefix=API_PREFIX)
-app.include_router(curriculum_router, prefix=API_PREFIX)
-app.include_router(knowledge_router, prefix=API_PREFIX)
-app.include_router(governance_router, prefix=API_PREFIX)
-app.include_router(analytics_router, prefix=API_PREFIX)
-app.include_router(operations_router, prefix=API_PREFIX)
-app.include_router(security_router, prefix=API_PREFIX)
-app.include_router(production_router, prefix=API_PREFIX)
-app.include_router(reliability_router, prefix=API_PREFIX)
-
-app.state.prometheus_metrics_mounted = mount_prometheus_metrics(app)
-log_router_registration(app)
 
 
-@app.get("/health/live")
-async def health_live():
-    """Liveness probe — process is running (no dependency checks)."""
-    return {"status": "alive", "version": settings.APP_VERSION}
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    if request.url.path == "/metrics":
+        return await call_next(request)
+    start = time.perf_counter()
+    response = await call_next(request)
+    elapsed = time.perf_counter() - start
+    endpoint = request.url.path
+    REQUEST_COUNT.labels(request.method, endpoint, str(response.status_code)).inc()
+    REQUEST_LATENCY.labels(request.method, endpoint).observe(elapsed)
+    return response
 
 
-@app.get("/health/ready")
-async def health_ready():
-    """Readiness probe — database must be reachable when configured."""
-    db_probe = await probe_database()
-    db_status = db_probe["database"]
-    ready = db_status in ("reachable", "not_configured")
-    body: dict = {
-        "status": "ready" if ready else "not_ready",
-        "version": settings.APP_VERSION,
-        "database": db_status,
-    }
-    if db_probe.get("database_latency_ms") is not None:
-        body["database_latency_ms"] = db_probe["database_latency_ms"]
-    if not ready:
-        return JSONResponse(status_code=503, content=body)
-    return body
-
-
-@app.get("/health")
-async def health():
-    """Health check with live database connectivity probe."""
-    db_probe = await probe_database()
-    db_status = db_probe["database"]
-    overall = "healthy" if db_status in ("reachable", "not_configured") else "degraded"
-    body: dict = {
-        "status": overall,
-        "version": settings.APP_VERSION,
-        "database": db_status,
-    }
-    if db_probe.get("database_latency_ms") is not None:
-        body["database_latency_ms"] = db_probe["database_latency_ms"]
-    return body
-
-
-@app.get("/health/auth")
-async def health_auth():
-    from app.core.security import hash_password, verify_password
-
-    try:
-        hashed = hash_password("health-check")
-        return {"password_hashing": "ok" if verify_password("health-check", hashed) else "failed"}
-    except Exception as exc:
-        return {"password_hashing": "error", "detail": str(exc)}
-
-
-@app.get("/health/register")
-async def health_register():
-    """Diagnostic: test tenant context + user table access (read-only)."""
-    from app.core.database import get_session_factory, set_tenant_context
-    from app.models import Tenant
-
-    try:
-        factory = get_session_factory()
-        async with factory() as session:
-            tenant = await session.scalar(select(Tenant).where(Tenant.slug == "default"))
-            if not tenant:
-                return {"register": "error", "detail": "default tenant missing — run migrations"}
-            await set_tenant_context(session, str(tenant.id))
-            setting = await session.scalar(text("SELECT current_setting('app.tenant_id', true)"))
-            result = await session.execute(
-                text("SELECT COUNT(*) FROM users WHERE tenant_id = :tid"),
-                {"tid": tenant.id},
-            )
-            count = result.scalar()
-            return {"register": "ok", "tenant_id": str(tenant.id), "setting": setting, "users": count}
-    except Exception as exc:
-        return {"register": "error", "detail": str(exc), "type": type(exc).__name__}
-
-
-@app.get("/health/ai")
-async def health_ai():
-    from app.ai.openai_client import ai_client
-
-    return {
-        "provider": ai_client.provider,
-        "model": ai_client.model,
-        "configured": ai_client.is_configured,
-        "hint": (
-            "Set AI_PROVIDER=copilot + AZURE_OPENAI_* keys (Microsoft Copilot via Azure)"
-            if ai_client.provider == "mock"
-            else "ready"
-        ),
-    }
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    rid = getattr(request.state, "request_id", None) or get_request_id()
-    if isinstance(exc, HTTPException):
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    logger.exception("unhandled_error request_id=%s path=%s", rid, request.url.path)
-    if settings.DEBUG:
-        content = {"detail": str(exc), "type": type(exc).__name__}
-    else:
-        content = {"detail": "Internal server error"}
-    return JSONResponse(status_code=500, content=content)
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(conversation.router)
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {
         "name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
         "docs": "/docs",
         "health": "/health",
+        "home": "/home",
+        "build_info": "/build-info",
         "metrics": "/metrics",
-        "api": settings.API_V1_PREFIX,
     }
