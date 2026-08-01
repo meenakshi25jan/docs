@@ -4,11 +4,24 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.db.session import check_database_connection
 
-router = APIRouter(prefix="/health", tags=["health"])
+router = APIRouter(tags=["health"])
 settings = get_settings()
 
 
-@router.get("")
+@router.get("/home")
+async def home() -> dict:
+    return {
+        "message": "Welcome to AI English Teacher Platform",
+        "features": [
+            "Grammar correction",
+            "Conversation practice",
+            "Audio conversation",
+            "Band score estimation",
+        ],
+    }
+
+
+@router.get("/health")
 async def health() -> dict:
     connected, latency_ms = await check_database_connection()
     status_value = "healthy" if connected else "degraded"
@@ -22,12 +35,12 @@ async def health() -> dict:
     return body
 
 
-@router.get("/live")
+@router.get("/health/live")
 async def health_live() -> dict:
     return {"status": "alive", "app": settings.APP_NAME}
 
 
-@router.get("/ready")
+@router.get("/health/ready")
 async def health_ready():
     connected, latency_ms = await check_database_connection()
     body: dict = {

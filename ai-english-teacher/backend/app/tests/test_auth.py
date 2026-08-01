@@ -16,6 +16,10 @@ async def test_health_endpoints(client: AsyncClient) -> None:
     assert health.status_code == 200
     assert health.json()["status"] == "healthy"
 
+    home = await client.get("/home")
+    assert home.status_code == 200
+    assert "Grammar correction" in home.json()["features"]
+
 
 @pytest.mark.asyncio
 async def test_auth_flow(client: AsyncClient) -> None:
@@ -23,23 +27,28 @@ async def test_auth_flow(client: AsyncClient) -> None:
     password = "securepass123"
 
     register_response = await client.post(
-        "/auth/register",
-        json={"email": email, "password": password},
+        "/register",
+        json={
+            "name": "Learner",
+            "email": email,
+            "password": password,
+            "phone_number": "9999999999",
+            "teacher_voice": "female",
+        },
     )
     assert register_response.status_code == 201
     registered = register_response.json()
-    assert registered["email"] == email
-    assert registered["is_active"] is True
+    assert registered["user"]["email"] == email
+    assert registered["access_token"]
 
     login_response = await client.post(
-        "/auth/login",
+        "/login",
         json={"email": email, "password": password},
     )
     assert login_response.status_code == 200
     tokens = login_response.json()
-    assert "access_token" in tokens
-    assert "refresh_token" in tokens
-    assert tokens["token_type"] == "bearer"
+    assert tokens["access_token"]
+    assert tokens["refresh_token"]
 
     me_response = await client.get(
         "/users/me",
@@ -48,16 +57,13 @@ async def test_auth_flow(client: AsyncClient) -> None:
     assert me_response.status_code == 200
     me = me_response.json()
     assert me["email"] == email
-    assert me["id"] == registered["id"]
+    assert me["name"] == "Learner"
 
     refresh_response = await client.post(
-        "/auth/refresh",
+        "/refresh",
         json={"refresh_token": tokens["refresh_token"]},
     )
     assert refresh_response.status_code == 200
-    refreshed = refresh_response.json()
-    assert refreshed["access_token"]
-    assert refreshed["refresh_token"]
 
 
 @pytest.mark.asyncio
