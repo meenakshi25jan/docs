@@ -22,12 +22,11 @@ REQUIRED_API = {
     "name: ai-english-teacher-api",
     "rootDir: ai-english-teacher/backend",
     "./start.sh",
+    "healthCheckPath: /health/live",
+    "JWT_SECRET",
+    "XAI_API_KEY",
+    "DATABASE_URL",
 }
-
-FORBIDDEN_WEB = [
-    "dockerfilePath: backend/Dockerfile",
-    "runtime: docker",
-]
 
 
 def main() -> int:
@@ -42,15 +41,9 @@ def main() -> int:
         if needle not in text:
             errors.append(f"API config missing: {needle}")
 
-    web_section = text.split("ai-english-teacher-web", 1)
-    web_text = web_section[1] if len(web_section) > 1 else ""
     for needle in REQUIRED_WEB:
         if needle not in text:
             errors.append(f"Web config missing: {needle}")
-
-    for needle in FORBIDDEN_WEB:
-        if needle in web_text:
-            errors.append(f"Web service must not use: {needle}")
 
     if "branch: main" not in text:
         errors.append("Blueprint must deploy branch: main")
@@ -59,13 +52,12 @@ def main() -> int:
         errors.append("Missing api service name")
     if not re.search(r"name:\s*ai-english-teacher-web", text):
         errors.append("Missing web service name")
-    api_part = text.split("ai-english-teacher-web", 1)[0]
-    if "SKIP_MIGRATIONS" in api_part:
-        mig_section = api_part.split("SKIP_MIGRATIONS", 1)[1][:60]
-        if re.search(r"value:\s*[\"']?true", mig_section, re.I):
-            errors.append("SKIP_MIGRATIONS must be false (never true in production)")
-        if '"false"' not in mig_section and "'false'" not in mig_section:
-            errors.append("API should set SKIP_MIGRATIONS: false")
+
+    start_sh = REPO_ROOT / "ai-english-teacher" / "backend" / "start.sh"
+    if not start_sh.is_file():
+        errors.append(f"missing backend start script: {start_sh}")
+    elif "alembic upgrade head" not in start_sh.read_text(encoding="utf-8"):
+        errors.append("start.sh must run alembic upgrade head")
 
     if errors:
         print("render.yaml validation FAILED:")

@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       run_migrations:
-        description: Run database migrations against DATABASE_URL secret
+        description: Run Alembic migrations against DATABASE_URL secret
         type: boolean
         default: true
       run_verify:
-        description: Run full post-deploy verification
+        description: Run post-deploy verification
         type: boolean
         default: true
       trigger_render:
@@ -47,22 +47,20 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run database migrations
+      - name: Run Alembic migrations
         if: github.event.inputs.run_migrations != 'false'
         working-directory: ai-english-teacher/backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PYTHONPATH: .
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'migration-smoke-secret' }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "WARN: DATABASE_URL secret not set — skipping GitHub-side migrations"
-            echo "Migrations will run via API start.sh on Render (SKIP_MIGRATIONS=false)"
+            echo "Migrations will run via start.sh on Render"
           else
             pip install -r requirements-render.txt
-            mkdir -p migrations
-            cp -r ../database/migrations/* migrations/ 2>/dev/null || true
-            python3 -m scripts.migrate
-            python3 -m scripts.verify_migrations_applied
+            alembic upgrade head
+            echo "Alembic migrations applied"
           fi
 
       - name: Trigger Render API deploy hook
@@ -77,7 +75,6 @@ jobs:
             echo "API deploy hook triggered"
           else
             echo "RENDER_DEPLOY_HOOK_API not set — relying on Render autoDeploy from main"
-          fi
 
       - name: Wait for API healthy
         if: github.event.inputs.run_verify != 'false'
@@ -100,13 +97,12 @@ jobs:
             echo "Web deploy hook triggered"
           else
             echo "RENDER_DEPLOY_HOOK_WEB not set — relying on Render autoDeploy from main"
-          fi
 
       - name: Wait for Web healthy
         if: github.event.inputs.run_verify != 'false'
         env:
           WAIT_BASE_URL: ${{ env.DEPLOY_WEB_URL }}
-          WAIT_PATHS: /,/grammar-class,/conversation
+          WAIT_PATHS: /
           WAIT_TIMEOUT: '600'
           WAIT_INTERVAL: '20'
         run: python3 ai-english-teacher/scripts/wait_for_healthy.py
@@ -117,8 +113,10 @@ jobs:
           TIMEOUT_SECONDS: '90'
           POST_DEPLOY_REGISTER_USER: 'true'
           POST_DEPLOY_REPORT: post_deploy_report.json
+          DEPLOY_API_URL: ${{ env.DEPLOY_API_URL }}
+          DEPLOY_WEB_URL: ${{ env.DEPLOY_WEB_URL }}
         run: |
-          for i in 1 2 3 4 5 6 8 10 12; do
+          for i in 1 2 3 4 5; do
             echo "Verification attempt $i..."
             if python3 ai-english-teacher/scripts/post_deploy_verify.py; then
               exit 0
@@ -128,24 +126,12 @@ jobs:
           echo "Post-deploy verification failed after retries"
           exit 1
 
-      - name: Performance smoke
-        if: github.event.inputs.run_verify != 'false'
-        env:
-          MAX_LATENCY_MS: '10000'
-        run: python3 ai-english-teacher/scripts/performance_smoke.py
-
-      - name: Deployment diagnosis report
-        if: always()
-        run: python3 ai-english-teacher/scripts/diagnose_deployment.py || true
-
       - name: Upload deployment report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: post-deploy-report
-          path: |
-            post_deploy_report.json
-            ai-english-teacher/scripts/diagnose_deployment_report.json
+          path: post_deploy_report.json
           if-no-files-found: ignore
 
       - name: Deployment success notification

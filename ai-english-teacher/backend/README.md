@@ -155,6 +155,40 @@ pytest
 
 Tests mock Grok/STT/TTS — no API keys needed for the test suite.
 
+## CI/CD (GitHub Actions)
+
+Pipelines live in `.github/workflows/`:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| **AI English Teacher CI** (`ci.yml`) | Push/PR to `main` or `cursor/**` | Lint (Ruff/Flake8), pytest, Alembic Postgres smoke test, Docker build, Gitleaks |
+| **AI English Teacher Deploy** (`deploy.yml`) | CI success on `main`, or manual | Alembic migrate, Render deploy hooks, health wait, post-deploy verify |
+| **AI English Teacher Migrate** (`migrate.yml`) | Manual | Run `alembic upgrade head` against production DB |
+
+### Required GitHub secrets (production)
+
+| Secret | Purpose |
+|--------|---------|
+| `DATABASE_URL` | Neon/Postgres URL for migrations (`postgresql+asyncpg://...`) |
+| `JWT_SECRET` | JWT signing secret (also set on Render) |
+| `RENDER_DEPLOY_HOOK_API` | Optional — trigger API redeploy |
+| `RENDER_DEPLOY_HOOK_WEB` | Optional — trigger web redeploy |
+
+### Render deployment
+
+`render.yaml` at repo root deploys:
+
+- **API** — `ai-english-teacher/backend` → `bash ./start.sh` (Alembic + uvicorn)
+- **Web** — `ai-english-teacher/frontend` → Next.js
+
+Set on Render dashboard: `DATABASE_URL`, `XAI_API_KEY`, `OPENAI_API_KEY`.
+
+### Local Docker build (same as CI)
+
+```bash
+docker build -f ai-english-teacher/backend/Dockerfile -t ai-english-teacher-api ai-english-teacher/backend
+```
+
 ## Project structure
 
 ```
