@@ -10,29 +10,25 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Validate render.yaml
         run: python3 ai-english-teacher/scripts/validate_render_config.py
-
-      - name: Run database migrations
+      - name: Check Alembic migrations
+        run: python3 ai-english-teacher/scripts/check_migrations.py
+      - name: Run Alembic migrations
         working-directory: ai-english-teacher/backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PYTHONPATH: .
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "FAIL: DATABASE_URL secret is required for migrations"
             exit 1
           fi
           pip install -r requirements-render.txt
-          mkdir -p migrations
-          cp -r ../database/migrations/* migrations/ 2>/dev/null || true
-          python3 -m scripts.migrate
-          python3 -m scripts.verify_migrations_applied
-
+          alembic upgrade head
+          echo "Alembic upgrade head completed"
       - name: Migration report
         run: python3 ai-english-teacher/scripts/migration_report.py

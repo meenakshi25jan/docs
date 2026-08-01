@@ -1,106 +1,69 @@
-import json
 from functools import lru_cache
-from typing import Any
 
-from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic import AliasChoices, Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     APP_NAME: str = "AI English Teacher"
-    APP_VERSION: str = "1.0.0"
+    APP_ENV: str = "development"
     DEBUG: bool = False
-    API_V1_PREFIX: str = "/api/v1"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_english_teacher"
-    DATABASE_POOL_SIZE: int = 20
-    DATABASE_MAX_OVERFLOW: int = 10
-    # Recycle before Neon/serverless closes idle connections (~5 min)
-    DATABASE_POOL_RECYCLE: int = 280
-    DATABASE_POOL_PRE_PING: bool = True
+    DATABASE_URL: str = "sqlite+aiosqlite:///./ai_english_teacher.db"
 
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-
-    # JWT
-    JWT_SECRET_KEY: str = "change-me-in-production-use-rs256-key-pair"
+    JWT_SECRET: str = Field(validation_alias=AliasChoices("JWT_SECRET", "JWT_SECRET_KEY"))
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours (was 15 min — caused "Invalid token" too quickly)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # OAuth2
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
-    MICROSOFT_CLIENT_ID: str = ""
-    MICROSOFT_CLIENT_SECRET: str = ""
-    OAUTH_REDIRECT_BASE_URL: str = "http://localhost:8000"
+    BUILD_COMMIT_SHA: str = ""
+    BUILD_TIMESTAMP: str = ""
 
-    # Azure OpenAI — powers Microsoft Copilot in custom apps
-    AZURE_OPENAI_ENDPOINT: str = ""
-    AZURE_OPENAI_API_KEY: str = ""
-    AZURE_OPENAI_DEPLOYMENT: str = "gpt-4o-mini"
-    AZURE_OPENAI_API_VERSION: str = "2024-12-01-preview"
+    SENTRY_DSN: str = ""
 
-    # OpenAI / Groq (OpenAI-compatible APIs)
+    XAI_API_KEY: str = ""
+    GROK_MODEL: str = "grok-2-1212"
+    GROK_BASE_URL: str = "https://api.x.ai/v1/chat/completions"
+
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o"
-    OPENAI_BASE_URL: str = ""  # e.g. https://api.groq.com/openai/v1
-    WHISPER_MODEL: str = ""  # auto: whisper-large-v3-turbo (Groq) or whisper-1 (OpenAI)
+    WHISPER_MODEL: str = "whisper-1"
+    WHISPER_BASE_URL: str = "https://api.openai.com/v1/audio/transcriptions"
 
-    # LLM provider: auto | copilot | azure | openai | ollama | mock
-    AI_PROVIDER: str = "auto"
-    COGNITIVE_ORCHESTRATION_ENABLED: bool = True
-    OLLAMA_BASE_URL: str = ""
-    OLLAMA_MODEL: str = "llama3.2"
+    TTS_VOICE_FEMALE: str = "en-US-JennyNeural"
+    TTS_VOICE_MALE: str = "en-US-GuyNeural"
 
-    # Azure Speech
-    AZURE_SPEECH_KEY: str = ""
-    AZURE_SPEECH_REGION: str = "eastus"
+    # RAG embeddings (sentence-transformers/all-MiniLM-L6-v2 default — Grok does not provide vectors)
+    EMBEDDING_DIMENSION: int = 384
 
-    # Rate Limiting
-    RATE_LIMIT_PER_MINUTE: int = 100
-    RATE_LIMIT_TENANT_PER_MINUTE: int = 1000
+    # Knowledge ingestion chunking (characters; token-aware splitting is a future enhancement)
+    INGESTION_CHUNK_SIZE: int = 1000
+    INGESTION_CHUNK_OVERLAP: int = 200
 
-    # CORS (comma-separated or JSON array)
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "https://ai-english-teacher-web.onrender.com",
-    ]
-
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: Any) -> list[str]:
-        if isinstance(v, list):
-            origins = v
-        elif isinstance(v, str):
-            v = v.strip()
-            if not v:
-                origins = ["http://localhost:3000"]
-            elif v.startswith("["):
-                origins = json.loads(v)
-            else:
-                origins = [origin.strip() for origin in v.split(",") if origin.strip()]
-        else:
-            origins = ["http://localhost:3000"]
-
-        production = "https://ai-english-teacher-web.onrender.com"
-        if production not in origins:
-            origins.append(production)
-        return origins
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def normalize_database_url(cls, v: str) -> str:
-        if isinstance(v, str) and v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql+asyncpg://", 1)
-        if isinstance(v, str) and v.startswith("postgresql://"):
-            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
+    def normalize_database_url(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+asyncpg://", 1)
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return ["http://localhost:3000"]
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore[call-arg]

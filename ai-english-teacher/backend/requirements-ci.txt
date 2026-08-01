@@ -1,7 +1,12 @@
-# CI-only tooling (lint, type check, coverage)
+# CI / dev tooling — not installed in production container
 -r requirements.txt
-ruff>=0.8.0
-black>=24.10.0
-flake8>=7.1.0
-mypy>=1.13.0
-pytest-cov>=6.0.0
+
+black==24.10.0
+isort==5.13.2
+flake8==7.1.1
+mypy==1.14.1
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+pip-audit==2.7.3
+types-python-jose==3.3.4.20240106
