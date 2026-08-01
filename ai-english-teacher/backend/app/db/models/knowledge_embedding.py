@@ -9,9 +9,10 @@ If switching embedding providers, this column must be migrated (ALTER COLUMN ...
 and all existing embeddings regenerated, since vectors from different models are not
 compatible or comparable.
 
-Deferred (future phase): vocabulary_mastery, achievement, user_achievement, grammar_rule,
-vocabulary_knowledge, tenant, teacher, organization, course, assignment, report,
-audit_log, subscription, payment.
+Valid knowledge_type values (app-level enum, not DB CHECK):
+  lesson_knowledge, knowledge_chunk, grammar_rule, vocabulary_knowledge.
+
+knowledge_chunk rows reference knowledge_chunk.id from the ingestion pipeline.
 """
 
 import uuid

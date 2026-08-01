@@ -31,9 +31,9 @@ class JsonDocument(TypeDecorator[dict | None]):
 
 
 class EmbeddingVector(TypeDecorator[list[float]]):
-    """pgvector column in PostgreSQL; TEXT placeholder in SQLite tests."""
+    """pgvector column in PostgreSQL; JSON array in SQLite tests."""
 
-    impl = Text
+    impl = JSON
     cache_ok = True
 
     def __init__(self, dimension: int) -> None:
@@ -45,4 +45,4 @@ class EmbeddingVector(TypeDecorator[list[float]]):
             from pgvector.sqlalchemy import Vector
 
             return dialect.type_descriptor(Vector(self.dimension))
-        return dialect.type_descriptor(Text())
+        return dialect.type_descriptor(JSON())

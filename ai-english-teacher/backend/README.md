@@ -31,6 +31,38 @@ Edge TTS audio + JSON response
 
 Edge TTS requires no API key.
 
+### System dependencies (knowledge ingestion)
+
+Python packages alone are not enough for OCR-based image ingestion:
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Tesseract OCR** | `pytesseract` is only a wrapper; the OCR engine must be installed separately | See below |
+
+**Tesseract OCR**
+
+- **Ubuntu / Debian:** `sudo apt-get install tesseract-ocr`
+- **macOS (Homebrew):** `brew install tesseract`
+- **Windows:** Download installer from [UB Mannheim Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and add the install directory to `PATH`
+
+Verify: `tesseract --version`
+
+Image ingestion (`ImageIngestor`) will fail at runtime if the `tesseract` binary is missing, even when `pytesseract` is installed via pip.
+
+## Knowledge ingestion (Phase 3.1)
+
+The ingestion layer lives in `app/ingestion/` and persists rows to `knowledge_source` → `knowledge_document` → `knowledge_chunk`, optionally writing `knowledge_embedding` rows when a pluggable `embed_fn` is supplied.
+
+```python
+from app.ingestion import IngestionOrchestrator
+
+# embed_fn is intentionally not hardcoded — wire sentence-transformers or another
+# provider in a later phase (see EMBEDDING_DIMENSION in config).
+await orchestrator.ingest_source(source_id=..., embed_fn=my_embed_fn, embedding_model="my-model")
+```
+
+Configurable chunking via `INGESTION_CHUNK_SIZE` and `INGESTION_CHUNK_OVERLAP` (characters).
+
 ## Quick start
 
 ### macOS / Linux

@@ -13,7 +13,10 @@ pipeline/provider (default: sentence-transformers/all-MiniLM-L6-v2) is required.
 from app.db.models.band_score import BandScore
 from app.db.models.conversation import ConversationMessage, ConversationSession
 from app.db.models.feedback import GrammarFeedback
+from app.db.models.knowledge_chunk import KnowledgeChunk
+from app.db.models.knowledge_document import KnowledgeDocument
 from app.db.models.knowledge_embedding import KnowledgeEmbedding
+from app.db.models.knowledge_source import KnowledgeSource
 from app.db.models.learning_plan import LearningPlan
 from app.db.models.lesson_knowledge import LessonKnowledge
 from app.db.models.user import User
@@ -27,7 +30,10 @@ __all__ = [
     "ConversationMessage",
     "ConversationSession",
     "GrammarFeedback",
+    "KnowledgeChunk",
+    "KnowledgeDocument",
     "KnowledgeEmbedding",
+    "KnowledgeSource",
     "LearningPlan",
     "LessonKnowledge",
     "User",

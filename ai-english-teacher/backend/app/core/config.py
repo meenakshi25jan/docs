@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # RAG embeddings (sentence-transformers/all-MiniLM-L6-v2 default — Grok does not provide vectors)
     EMBEDDING_DIMENSION: int = 384
 
+    # Knowledge ingestion chunking (characters; token-aware splitting is a future enhancement)
+    INGESTION_CHUNK_SIZE: int = 1000
+    INGESTION_CHUNK_OVERLAP: int = 200
+
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     @field_validator("DATABASE_URL", mode="before")
