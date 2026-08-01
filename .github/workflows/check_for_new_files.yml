@@ -18,8 +18,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           result-encoding: string
           script: |
-            const { getAddedFiles } = require('./.github/workflows/scripts/check_for_new_files.js');
-            return await getAddedFiles({github, context, core});
+            const { getAddedFilesCount } = require('./.github/workflows/scripts/check_for_new_files.js');
+            return await getAddedFilesCount({ github, context, core });
       - name: Set yarn Berry
         uses: ./.github/actions/set_yarn_berry
       - name: Install npm package ignore
