@@ -1,103 +1,53 @@
-import bcrypt
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+from jose import jwt
 
 from app.core.config import get_settings
-from app.core.database import get_db
-from app.models import User
 
-settings = get_settings()
-security = HTTPBearer()
+_password_hasher = PasswordHasher()
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return _password_hasher.hash(password)
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return _password_hasher.verify(hashed_password, plain_password)
+    except VerifyMismatchError:
+        return False
 
 
-def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
+def create_access_token(subject: str | UUID, expires_delta: timedelta | None = None) -> str:
+    settings = get_settings()
+    expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire, "type": "access"})
-    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    payload = {
+        "sub": str(subject),
+        "exp": expire,
+        "type": "access",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(data: dict[str, Any]) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
-    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+def create_refresh_token(subject: str | UUID, expires_delta: timedelta | None = None) -> str:
+    settings = get_settings()
+    expire = datetime.now(UTC) + (
+        expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    payload = {
+        "sub": str(subject),
+        "exp": expire,
+        "type": "refresh",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_token(token: str) -> dict[str, Any]:
-    try:
-        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-    except JWTError as e:
-        msg = str(e).lower()
-        if "expired" in msg:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Session expired. Please log in again.",
-            ) from e
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from e
-
-
-class TokenPayload:
-    def __init__(self, sub: str, tenant_id: str, role: str, email: str):
-        self.user_id = UUID(sub)
-        self.tenant_id = UUID(tenant_id)
-        self.role = role
-        self.email = email
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db),
-) -> TokenPayload:
-    payload = decode_token(credentials.credentials)
-    if payload.get("type") != "access":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
-
-    token_user_id = UUID(payload["sub"])
-    token_tenant_id = str(payload["tenant_id"])
-    token_role = payload["role"]
-    token_email = payload["email"]
-
-    db_user = await db.get(User, token_user_id)
-    if not db_user or not db_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
-
-    if str(db_user.tenant_id) != token_tenant_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
-    if db_user.role != token_role:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
-    return TokenPayload(
-        sub=str(db_user.id),
-        tenant_id=str(db_user.tenant_id),
-        role=db_user.role,
-        email=db_user.email if db_user.email != token_email else token_email,
-    )
-
-
-def require_role(*roles: str):
-    async def checker(user: TokenPayload = Depends(get_current_user)) -> TokenPayload:
-        if user.role not in roles and user.role != "super_admin":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-        return user
-    return checker
+    settings = get_settings()
+    return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])

@@ -1,156 +1,286 @@
+# GitOps CD for AI English Teacher
+#
+# DEPLOY TRIGGER STRATEGY (why workflow_run, not push: main):
+# ---------------------------------------------------------
+# We use workflow_run on successful CI for branch main instead of deploy-on-push
+# because push:main would deploy even if CI is skipped, still running, or bypassed.
+# workflow_run ties production deploy to a *completed green* CI run on main.
+#
+# Branch protection (documented in docs/deployment/BRANCH_PROTECTION.md) is still
+# required so broken code cannot merge to main — but protection alone does not
+# prevent a direct push or a race where deploy starts before CI finishes.
+# workflow_run closes that race. We do NOT also trigger on push:main.
+#
+# Manual workflow_dispatch is allowed for operators (environment: production).
+
 name: AI English Teacher Deploy
 
 on:
   workflow_run:
     workflows: [AI English Teacher CI]
     types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
-      run_migrations:
-        description: Run database migrations against DATABASE_URL secret
-        type: boolean
-        default: true
-      run_verify:
-        description: Run full post-deploy verification
-        type: boolean
-        default: true
-      trigger_render:
-        description: POST Render deploy hooks (if secrets configured)
-        type: boolean
-        default: true
+      expected_commit:
+        description: Commit SHA to verify after deploy (defaults to HEAD of main)
+        required: false
 
 concurrency:
-  group: ai-english-teacher-deploy
+  group: ai-english-teacher-deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: write
+
 env:
-  DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
+  BACKEND_DIR: ai-english-teacher/backend
+  FRONTEND_DIR: ai-english-teacher/frontend
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ai-english-teacher-api
   DEPLOY_API_URL: ${{ vars.DEPLOY_API_URL || 'https://ai-english-teacher-api.onrender.com' }}
+  DEPLOY_WEB_URL: ${{ vars.DEPLOY_WEB_URL || 'https://ai-english-teacher-web.onrender.com' }}
 
 jobs:
-  deploy:
+  deploy-gate:
+    name: Gate — CI success on main only
+    runs-on: ubuntu-latest
     if: >
-      github.event.workflow_run.conclusion == 'success' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main') ||
       github.event_name == 'workflow_dispatch'
+    outputs:
+      commit_sha: ${{ steps.meta.outputs.commit_sha }}
+    steps:
+      - name: Resolve deploy commit
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "commit_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "commit_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Gate passed
+        run: echo "Deploying commit ${{ steps.meta.outputs.commit_sha }}"
+
+  build-push:
+    name: Build and push image (GHCR)
+    needs: deploy-gate
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.deploy-gate.outputs.commit_sha }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.BACKEND_DIR }}
+          file: ${{ env.BACKEND_DIR }}/Dockerfile
+          push: true
+          build-args: |
+            BUILD_COMMIT_SHA=${{ needs.deploy-gate.outputs.commit_sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ needs.deploy-gate.outputs.commit_sha }}
 
-      - name: Validate deployment configuration
-        run: |
-          python3 ai-english-teacher/scripts/validate_render_config.py
-          python3 ai-english-teacher/scripts/validate_environment.py
-
+  migrate:
+    name: Database migrations (Neon)
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.deploy-gate.outputs.commit_sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Run database migrations
-        if: github.event.inputs.run_migrations != 'false'
-        working-directory: ai-english-teacher/backend
+      - name: alembic upgrade head
+        working-directory: ${{ env.BACKEND_DIR }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PYTHONPATH: .
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "WARN: DATABASE_URL secret not set — skipping GitHub-side migrations"
-            echo "Migrations will run via API start.sh on Render (SKIP_MIGRATIONS=false)"
-          else
-            pip install -r requirements-render.txt
-            mkdir -p migrations
-            cp -r ../database/migrations/* migrations/ 2>/dev/null || true
-            python3 -m scripts.migrate
-            python3 -m scripts.verify_migrations_applied
+            echo "FAIL: DATABASE_URL secret is required for production migrations"
+            exit 1
           fi
+          pip install -r requirements-render.txt
+          alembic upgrade head
 
-      - name: Trigger Render API deploy hook
-        if: >
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_render != 'false') ||
-          github.event_name == 'workflow_run'
+  deploy-backend:
+    name: Deploy backend (Render)
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger Render deploy hook
         env:
-          RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          if [ -n "$RENDER_DEPLOY_HOOK_API" ]; then
-            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_API"
-            echo "API deploy hook triggered"
-          else
-            echo "RENDER_DEPLOY_HOOK_API not set — relying on Render autoDeploy from main"
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "WARN: RENDER_DEPLOY_HOOK not set — relying on Render autoDeploy"
+            exit 0
           fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          echo "Render API deploy hook triggered"
 
-      - name: Wait for API healthy
-        if: github.event.inputs.run_verify != 'false'
-        env:
-          WAIT_BASE_URL: ${{ env.DEPLOY_API_URL }}
-          WAIT_PATHS: /health/live,/health,/health/ready
-          WAIT_TIMEOUT: '600'
-          WAIT_INTERVAL: '20'
-        run: python3 ai-english-teacher/scripts/wait_for_healthy.py
-
-      - name: Trigger Render Web deploy hook
-        if: >
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_render != 'false') ||
-          github.event_name == 'workflow_run'
-        env:
-          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
-        run: |
-          if [ -n "$RENDER_DEPLOY_HOOK_WEB" ]; then
-            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_WEB"
-            echo "Web deploy hook triggered"
-          else
-            echo "RENDER_DEPLOY_HOOK_WEB not set — relying on Render autoDeploy from main"
-          fi
-
-      - name: Wait for Web healthy
-        if: github.event.inputs.run_verify != 'false'
-        env:
-          WAIT_BASE_URL: ${{ env.DEPLOY_WEB_URL }}
-          WAIT_PATHS: /,/grammar-class,/conversation
-          WAIT_TIMEOUT: '600'
-          WAIT_INTERVAL: '20'
-        run: python3 ai-english-teacher/scripts/wait_for_healthy.py
-
-      - name: Post-deploy verification (with retries)
-        if: github.event.inputs.run_verify != 'false'
-        env:
-          TIMEOUT_SECONDS: '90'
-          POST_DEPLOY_REGISTER_USER: 'true'
-          POST_DEPLOY_REPORT: post_deploy_report.json
-        run: |
-          for i in 1 2 3 4 5 6 8 10 12; do
-            echo "Verification attempt $i..."
-            if python3 ai-english-teacher/scripts/post_deploy_verify.py; then
-              exit 0
-            fi
-            sleep 30
-          done
-          echo "Post-deploy verification failed after retries"
-          exit 1
-
-      - name: Performance smoke
-        if: github.event.inputs.run_verify != 'false'
-        env:
-          MAX_LATENCY_MS: '10000'
-        run: python3 ai-english-teacher/scripts/performance_smoke.py
-
-      - name: Deployment diagnosis report
-        if: always()
-        run: python3 ai-english-teacher/scripts/diagnose_deployment.py || true
-
-      - name: Upload deployment report
-        if: always()
-        uses: actions/upload-artifact@v4
+  deploy-frontend:
+    name: Deploy frontend (Vercel)
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: post-deploy-report
-          path: |
-            post_deploy_report.json
-            ai-english-teacher/scripts/diagnose_deployment_report.json
-          if-no-files-found: ignore
-
-      - name: Deployment success notification
-        if: success()
+          ref: ${{ needs.deploy-gate.outputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Deploy to Vercel
+        working-directory: ${{ env.FRONTEND_DIR }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          echo "::notice title=Deploy Success::Production verification passed"
-          echo "Web: $DEPLOY_WEB_URL"
-          echo "API: $DEPLOY_API_URL"
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "WARN: Vercel secrets not fully configured — skipping CLI deploy"
+            if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
+              curl -fsS -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+              echo "Vercel deploy hook triggered"
+            fi
+            exit 0
+          fi
+          npx vercel@latest deploy --prod --yes \
+            --token "$VERCEL_TOKEN" \
+            --scope "$VERCEL_ORG_ID" \
+            --project "$VERCEL_PROJECT_ID"
+
+  wait-live:
+    name: Wait for live deployment (commit SHA)
+    needs: [deploy-gate, deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Poll build-info until commit matches
+        env:
+          DEPLOY_API_URL: ${{ env.DEPLOY_API_URL }}
+          DEPLOY_WEB_URL: ${{ env.DEPLOY_WEB_URL }}
+          EXPECTED_COMMIT: ${{ needs.deploy-gate.outputs.commit_sha }}
+          POLL_TIMEOUT: '600'
+          POLL_INTERVAL: '20'
+        run: python3 ai-english-teacher/scripts/wait_for_deploy_commit.py
+
+  health-check:
+    name: Health checks
+    needs: wait-live
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check /health endpoints
+        env:
+          API_URL: ${{ env.DEPLOY_API_URL }}
+        run: |
+          for path in /health/live /health /health/ready; do
+            code=$(curl -s -o /tmp/health.json -w "%{http_code}" "$API_URL$path")
+            echo "$path -> HTTP $code"
+            cat /tmp/health.json
+            if [ "$path" = "/health/ready" ] && [ "$code" = "503" ]; then
+              echo "WARN: readiness degraded (DB may be warming)"
+            elif [ "$code" != "200" ]; then
+              echo "FAIL: $path returned $code"
+              exit 1
+            fi
+          done
+
+  smoke-test:
+    name: Smoke tests
+    needs: [deploy-gate, health-check]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Production smoke tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          SMOKE_BASE_URL: ${{ env.DEPLOY_API_URL }}
+          SMOKE_EXPECT_COMMIT: ${{ needs.deploy-gate.outputs.commit_sha }}
+        run: |
+          pip install -r requirements-ci.txt
+          pytest app/tests/test_smoke.py -v
+
+  save-deploy-state:
+    name: Record successful deploy
+    needs: [deploy-gate, smoke-test]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Write deploy state artifact
+        run: |
+          cat > deploy-state.json <<EOF
+          {
+            "last_good_commit": "${{ needs.deploy-gate.outputs.commit_sha }}",
+            "deployed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "api_url": "${{ env.DEPLOY_API_URL }}",
+            "web_url": "${{ env.DEPLOY_WEB_URL }}"
+          }
+          EOF
+          cat deploy-state.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-state
+          path: deploy-state.json
+          retention-days: 90
+      - uses: actions/cache/save@v4
+        with:
+          path: deploy-state.json
+          key: deploy-state-production-${{ needs.deploy-gate.outputs.commit_sha }}
+
+  rollback:
+    name: Rollback on failure
+    needs: [deploy-gate, build-push, migrate, deploy-backend, deploy-frontend, wait-live, health-check, smoke-test]
+    if: failure() && needs.deploy-gate.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: .
+          key: deploy-state-production-
+          restore-keys: deploy-state-production-
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: deploy-state
+          path: previous-deploy
+      - name: Restore previous deploy state
+        run: |
+          if [ -f previous-deploy/deploy-state.json ]; then
+            cp previous-deploy/deploy-state.json deploy-state.json
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Trigger rollback
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          RENDER_ROLLBACK_HOOK: ${{ secrets.RENDER_ROLLBACK_HOOK }}
+          VERCEL_ROLLBACK_HOOK: ${{ secrets.VERCEL_ROLLBACK_HOOK }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOY_STATE_PATH: deploy-state.json
+        run: python3 ai-english-teacher/scripts/rollback_deploy.py
