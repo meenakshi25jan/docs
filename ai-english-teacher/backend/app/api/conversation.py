@@ -1,3 +1,5 @@
+from typing import Literal, cast
+
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,7 +59,7 @@ async def _build_conversation_response(
         mode=mode,
     )
     return ConversationResponse(
-        input_type=input_type,
+        input_type=cast(Literal["text", "audio"], input_type),
         mode=mode,
         result=GrammarCorrectionResult(**result),
         voice_output=VoiceOutput(**voice_output_data),
@@ -95,7 +97,9 @@ async def audio_conversation(
     tts_service: TTSService = Depends(get_tts_service),
 ) -> AudioConversationResponse:
     audio_bytes = await audio.read()
-    transcribed_text = await stt_service.transcribe(audio_bytes, filename=audio.filename or "audio.wav")
+    transcribed_text = await stt_service.transcribe(
+        audio_bytes, filename=audio.filename or "audio.wav"
+    )
     result = await orchestrator.handle(mode, transcribed_text)
     base_response = await _build_conversation_response(
         db=db,

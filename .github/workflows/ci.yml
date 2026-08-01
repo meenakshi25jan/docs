@@ -1,22 +1,24 @@
+# GitOps CI for AI English Teacher
+#
+# Triggers on PRs (all branches) and pushes to develop/main.
+# Push to main is required so post-merge CI runs on main before deploy workflow_run fires.
+
 name: AI English Teacher CI
 
 on:
-  push:
-    branches: [main, 'cursor/**']
-    paths:
-      - 'ai-english-teacher/**'
-      - 'render.yaml'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/deploy.yml'
-      - '.github/workflows/migrate.yml'
   pull_request:
-    branches: [main]
     paths:
       - 'ai-english-teacher/**'
       - 'render.yaml'
       - '.github/workflows/ci.yml'
       - '.github/workflows/deploy.yml'
-      - '.github/workflows/migrate.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'ai-english-teacher/**'
+      - 'render.yaml'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/deploy.yml'
 
 concurrency:
   group: ai-english-teacher-ci-${{ github.ref }}
@@ -27,43 +29,76 @@ permissions:
   security-events: write
   pull-requests: read
 
-jobs:
-  validate-config:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate render.yaml
-        run: python3 ai-english-teacher/scripts/validate_render_config.py
-      - name: Validate environment configuration
-        run: python3 ai-english-teacher/scripts/validate_environment.py
-      - name: Check Alembic migrations
-        run: python3 ai-english-teacher/scripts/check_migrations.py
-      - name: Migration report
-        run: python3 ai-english-teacher/scripts/migration_report.py
+env:
+  BACKEND_DIR: ai-english-teacher/backend
+  PYTHON_VERSION: '3.12'
 
-  backend-quality:
+jobs:
+  lint:
+    name: Lint (flake8, black, isort)
     runs-on: ubuntu-latest
-    needs: validate-config
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: ai-english-teacher/backend/requirements.txt
-      - name: Install backend + lint tools
-        run: |
-          pip install -r ai-english-teacher/backend/requirements.txt
-          pip install ruff==0.8.6 flake8==7.1.1
-      - name: Backend lint
-        run: bash ai-english-teacher/scripts/ci_lint_backend.sh
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: flake8
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: black --check
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: black --check app
+      - name: isort --check
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: isort --check-only app
 
-  backend-test:
+  typecheck:
+    name: Type check (mypy)
     runs-on: ubuntu-latest
-    needs: validate-config
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: mypy
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: mypy app
+
+  unit-tests:
+    name: Unit tests (pytest + coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: pytest with coverage (threshold 65%)
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          JWT_SECRET: ci-test-secret
+          DATABASE_URL: sqlite+aiosqlite:///:memory:
+        run: |
+          pytest app/tests/test_auth.py app/tests/test_conversation.py \
+            --cov=app --cov-report=term-missing --cov-fail-under=65 -v
+
+  integration-tests:
+    name: Integration tests (Postgres + pgvector)
+    runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -79,96 +114,109 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: ai-english-teacher/backend/requirements.txt
-      - name: Install backend dependencies
-        working-directory: ai-english-teacher/backend
-        run: pip install -r requirements.txt
-      - name: Run Alembic migrations (Postgres smoke test)
-        working-directory: ai-english-teacher/backend
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Enable pgvector extension
         env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - name: Run integration tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          JWT_SECRET: ci-test-secret
+          INTEGRATION_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-          JWT_SECRET: ci-test-secret
-        run: alembic upgrade head
-      - name: Run backend tests
-        working-directory: ai-english-teacher/backend
-        env:
-          JWT_SECRET: ci-test-secret
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
-        run: pytest -v --tb=short
-      - name: OpenAPI import smoke test
-        working-directory: ai-english-teacher/backend
-        env:
-          JWT_SECRET: ci-test-secret
-        run: python -c "from app.main import app; assert app.openapi()"
+        run: pytest app/tests/test_integration_db.py -v
 
-  backend-docker:
+  migration-check:
+    name: Migration check (upgrade / downgrade / upgrade)
     runs-on: ubuntu-latest
-    needs: validate-config
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: migration_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - name: Build backend Docker image
-        run: docker build -f ai-english-teacher/backend/Dockerfile -t ai-english-teacher-api:ci ai-english-teacher/backend
-      - name: Report image size
-        run: docker images ai-english-teacher-api:ci --format '{{.Repository}}:{{.Tag}} {{.Size}}'
-
-  frontend:
-    runs-on: ubuntu-latest
-    needs: validate-config
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: ai-english-teacher/frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: ai-english-teacher/frontend
-        run: npm ci
-      - name: Lint frontend
-        working-directory: ai-english-teacher/frontend
-        run: npm run lint
-      - name: Typecheck frontend
-        working-directory: ai-english-teacher/frontend
-        run: npm run typecheck
-      - name: Build frontend
-        working-directory: ai-english-teacher/frontend
-        run: npm run build
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Alembic round-trip
+        env:
+          JWT_SECRET: ci-migration-secret
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/migration_db
+        run: bash ai-english-teacher/scripts/ci_migration_roundtrip.sh
 
-  security:
+  security-scan:
+    name: Security scan (pip-audit + gitleaks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: pip-audit
+        run: |
+          pip install pip-audit==2.7.3
+          IGNORE_ARGS=""
+          while IFS= read -r id; do
+            [[ -z "$id" || "$id" =~ ^# ]] && continue
+            IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $id"
+          done < ${{ env.BACKEND_DIR }}/.pip-audit-ignore
+          pip-audit -r ${{ env.BACKEND_DIR }}/requirements.txt $IGNORE_ARGS
       - name: Install Gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar -xz -C /usr/local/bin gitleaks
-      - name: Gitleaks secret scan (ai-english-teacher only)
-        continue-on-error: true
+      - name: Gitleaks
         run: gitleaks detect --source ai-english-teacher --config ai-english-teacher/.gitleaks.toml --redact --no-banner
 
-  dependency-review:
+  docker-build:
+    name: Docker build
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
+      - name: Build image
+        run: |
+          docker build \
+            --build-arg BUILD_COMMIT_SHA=${{ github.sha }} \
+            -f ${{ env.BACKEND_DIR }}/Dockerfile \
+            -t ghcr.io/${{ github.repository_owner }}/ai-english-teacher-api:${{ github.sha }} \
+            ${{ env.BACKEND_DIR }}
 
   ci-success:
+    name: ci-success
     runs-on: ubuntu-latest
-    needs: [backend-quality, backend-test, backend-docker, security]
+    needs: [lint, typecheck, unit-tests, integration-tests, migration-check, security-scan, docker-build]
     if: always()
     steps:
-      - name: Require critical jobs
+      - name: Require all CI gates
         run: |
-          if [ "${{ needs.backend-quality.result }}" != "success" ] || \
-             [ "${{ needs.backend-test.result }}" != "success" ] || \
-             [ "${{ needs.backend-docker.result }}" != "success" ]; then
-            echo "CI failed"
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.typecheck.result }}" != "success" ] || \
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.migration-check.result }}" != "success" ] || \
+             [ "${{ needs.security-scan.result }}" != "success" ] || \
+             [ "${{ needs.docker-build.result }}" != "success" ]; then
+            echo "CI failed — one or more required jobs did not succeed"
             exit 1
           fi
-          echo "CI passed"
+          echo "CI passed — all gates green"

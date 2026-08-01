@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,22 +13,24 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./ai_english_teacher.db"
 
-    JWT_SECRET: str
+    JWT_SECRET: str = Field(validation_alias=AliasChoices("JWT_SECRET", "JWT_SECRET_KEY"))
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # xAI Grok
+    BUILD_COMMIT_SHA: str = ""
+    BUILD_TIMESTAMP: str = ""
+
+    SENTRY_DSN: str = ""
+
     XAI_API_KEY: str = ""
     GROK_MODEL: str = "grok-2-1212"
     GROK_BASE_URL: str = "https://api.x.ai/v1/chat/completions"
 
-    # OpenAI Whisper (speech-to-text)
     OPENAI_API_KEY: str = ""
     WHISPER_MODEL: str = "whisper-1"
     WHISPER_BASE_URL: str = "https://api.openai.com/v1/audio/transcriptions"
 
-    # Edge TTS voices
     TTS_VOICE_FEMALE: str = "en-US-JennyNeural"
     TTS_VOICE_MALE: str = "en-US-GuyNeural"
 
@@ -57,4 +59,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore[call-arg]

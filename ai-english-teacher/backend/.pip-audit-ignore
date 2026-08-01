@@ -1,0 +1,16 @@
+# Known advisories without safe upgrades on current stack (review monthly).
+# ecdsa: transitive via python-jose — monitor python-jose releases.
+PYSEC-2026-1325
+# starlette: pinned by fastapi 0.115.x — upgrade fastapi major to resolve.
+PYSEC-2026-161
+PYSEC-2026-248
+PYSEC-2026-249
+PYSEC-2026-1941
+PYSEC-2026-1942
+PYSEC-2026-2280
+PYSEC-2026-2281
+# pyasn1: transitive via python-jose 3.4.x
+PYSEC-2026-2263
+PYSEC-2026-3457
+PYSEC-2026-3456
+PYSEC-2026-3455

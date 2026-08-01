@@ -155,38 +155,39 @@ pytest
 
 Tests mock Grok/STT/TTS — no API keys needed for the test suite.
 
-## CI/CD (GitHub Actions)
+## CI/CD (GitOps)
 
-Pipelines live in `.github/workflows/`:
+| Document | Contents |
+|----------|----------|
+| [docs/deployment/BRANCH_PROTECTION.md](../../docs/deployment/BRANCH_PROTECTION.md) | Manual GitHub branch rules |
+| [docs/deployment/SECRETS.md](../../docs/deployment/SECRETS.md) | Required secrets (no values) |
+| [docs/deployment/ROLLBACK.md](../../docs/deployment/ROLLBACK.md) | Automatic + manual rollback |
 
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| **AI English Teacher CI** (`ci.yml`) | Push/PR to `main` or `cursor/**` | Lint (Ruff/Flake8), pytest, Alembic Postgres smoke test, Docker build, Gitleaks |
-| **AI English Teacher Deploy** (`deploy.yml`) | CI success on `main`, or manual | Alembic migrate, Render deploy hooks, health wait, post-deploy verify |
-| **AI English Teacher Migrate** (`migrate.yml`) | Manual | Run `alembic upgrade head` against production DB |
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | PR + push to `main`/`develop` | flake8, black, isort, mypy, pytest (65% cov), integration DB, migration round-trip, pip-audit, gitleaks, Docker build |
+| `deploy.yml` | **CI success on `main` only** (`workflow_run`) | GHCR → migrate → Render → Vercel → poll SHA → health → smoke → rollback on failure |
+| `migrate.yml` | Manual | Production `alembic upgrade head` |
 
-### Required GitHub secrets (production)
+**Deploy gate:** CD uses `workflow_run` (not `push: main`) so production never deploys while CI is red or still running.
 
-| Secret | Purpose |
-|--------|---------|
-| `DATABASE_URL` | Neon/Postgres URL for migrations (`postgresql+asyncpg://...`) |
-| `JWT_SECRET` | JWT signing secret (also set on Render) |
-| `RENDER_DEPLOY_HOOK_API` | Optional — trigger API redeploy |
-| `RENDER_DEPLOY_HOOK_WEB` | Optional — trigger web redeploy |
+### Observability hooks
 
-### Render deployment
+- JSON structured logging (`app/core/logging.py`)
+- `GET /metrics` — Prometheus (no auth; restrict at network edge)
+- `GET /build-info` — commit SHA + timestamp
+- Sentry via `SENTRY_DSN` (no-op if unset)
 
-`render.yaml` at repo root deploys:
-
-- **API** — `ai-english-teacher/backend` → `bash ./start.sh` (Alembic + uvicorn)
-- **Web** — `ai-english-teacher/frontend` → Next.js
-
-Set on Render dashboard: `DATABASE_URL`, `XAI_API_KEY`, `OPENAI_API_KEY`.
+See [docs/deployment/SECRETS.md](../../docs/deployment/SECRETS.md) for all required secrets.
 
 ### Local Docker build (same as CI)
 
 ```bash
-docker build -f ai-english-teacher/backend/Dockerfile -t ai-english-teacher-api ai-english-teacher/backend
+docker build \
+  --build-arg BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
+  -f ai-english-teacher/backend/Dockerfile \
+  -t ai-english-teacher-api \
+  ai-english-teacher/backend
 ```
 
 ## Project structure
