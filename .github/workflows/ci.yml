@@ -186,7 +186,18 @@ jobs:
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar -xz -C /usr/local/bin gitleaks
       - name: Gitleaks
-        run: gitleaks detect --source ai-english-teacher --config ai-english-teacher/.gitleaks.toml --redact --no-banner
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            LOG_OPTS="origin/${{ github.event.pull_request.base.ref }}..HEAD"
+          else
+            LOG_OPTS="-1"
+          fi
+          gitleaks detect \
+            --source ai-english-teacher \
+            --config ai-english-teacher/.gitleaks.toml \
+            --log-opts="$LOG_OPTS" \
+            --redact \
+            --no-banner
 
   docker-build:
     name: Docker build
