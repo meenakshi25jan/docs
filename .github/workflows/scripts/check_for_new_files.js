@@ -1,29 +1,29 @@
+async function fetchAddedFiles(github, context) {
+  const {
+    issue: { number: issue_number },
+    repo: { owner, repo }
+  } = context;
+
+  return github.paginate(
+    'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
+    { owner, repo, pull_number: issue_number },
+    (response) => response.data.filter((file) => file.status === 'added')
+  );
+}
+
 module.exports = {
-  getAddedFiles: ({ github, context, core }) => {
-    const {
-      issue: { number: issue_number },
-      repo: { owner, repo }
-    } = context;
-
-    // Use the Github API to query for the list of files from the PR
-    return github
-      .paginate(
-        'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
-        { owner, repo, pull_number: issue_number },
-        (response) => response.data.filter((file) => file.status === 'added')
-      )
-      .then((files) => {
-        // Save these values to the Github env
-        core.exportVariable('NEW_FILES', files);
-
-        console.log('New files: ', files);
-
-        // Return the new files count to be used in the github workflow
-        return files.length;
-      });
+  getAddedFiles: async ({ github, context }) => {
+    return fetchAddedFiles(github, context);
   },
+
+  getAddedFilesCount: async ({ github, context }) => {
+    const files = await fetchAddedFiles(github, context);
+    return files.length;
+  },
+
   validateCodeowners: async ({ github, context, fetch, ignore }) => {
-    const { NEW_FILES, CURRENT_BRANCH, CURRENT_REPO } = process.env;
+    const { CURRENT_BRANCH, CURRENT_REPO } = process.env;
+    const addedFiles = await fetchAddedFiles(github, context);
 
     const codeownersFile = `https://raw.githubusercontent.com/${CURRENT_REPO}/${CURRENT_BRANCH}/.github/CODEOWNERS`;
 
@@ -32,7 +32,6 @@ module.exports = {
     const response = await fetch(codeownersFile);
     const body = await response.text();
 
-    // Filter out comments from CODEOWNERS file
     const codeownersFilePatterns = body
       .split('\n')
       .filter((e) => !e.startsWith('#'))
@@ -44,13 +43,11 @@ module.exports = {
       codeownersFilePatterns
     );
 
-    // Add the patterns to the ignore package
     const ig = ignore().add(codeownersFilePatterns);
 
     const filesNotInCodeowners = [];
 
-    JSON.parse(NEW_FILES).forEach((newFile) => {
-      // Check if the file isn't covered by our list of patterns
+    addedFiles.forEach((newFile) => {
       if (!ig.ignores(newFile.filename)) {
         console.log(`${newFile.filename} is not covered by CODEOWNERS`);
         filesNotInCodeowners.push(newFile.filename);
@@ -62,9 +59,8 @@ module.exports = {
       repo: { owner, repo }
     } = context;
 
-    console.log('New files: ', filesNotInCodeowners);
+    console.log('New files not in CODEOWNERS: ', filesNotInCodeowners);
 
-    // If we found files not covered by CODEOWNERS, then add a comment to the PR
     if (filesNotInCodeowners.length > 0) {
       const files = filesNotInCodeowners.map((e) => `- ${e}\n`).join('');
 
