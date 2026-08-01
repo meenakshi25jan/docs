@@ -9,7 +9,6 @@ from app.db.models.enums import ConversationMode, SessionStatus
 from app.db.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from app.db.models.conversation import ConversationMessage
     from app.db.models.user import User
 
 
@@ -18,9 +17,7 @@ class ConversationSession(TimestampMixin, Base):
 
     __tablename__ = "conversation_session"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -48,9 +45,7 @@ class ConversationMessage(TimestampMixin, Base):
 
     __tablename__ = "conversation_message"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("conversation_session.id", ondelete="CASCADE"),

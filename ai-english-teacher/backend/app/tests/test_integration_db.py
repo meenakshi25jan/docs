@@ -17,7 +17,7 @@ INTEGRATION_DATABASE_URL = os.getenv(
 )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 async def integration_engine():
     if not INTEGRATION_DATABASE_URL.startswith("postgresql"):
         pytest.skip("INTEGRATION_DATABASE_URL must be PostgreSQL")

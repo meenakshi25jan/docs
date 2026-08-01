@@ -31,13 +31,9 @@ class KnowledgeEmbedding(TimestampMixin, Base):
     """Polymorphic embedding row — knowledge_type validated in app code, not DB FK."""
 
     __tablename__ = "knowledge_embedding"
-    __table_args__ = (
-        Index("ix_knowledge_embedding_type_id", "knowledge_type", "knowledge_id"),
-    )
+    __table_args__ = (Index("ix_knowledge_embedding_type_id", "knowledge_type", "knowledge_id"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     knowledge_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     knowledge_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
     chunk_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

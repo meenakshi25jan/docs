@@ -14,9 +14,7 @@ class LessonKnowledge(TimestampMixin, Base):
 
     __tablename__ = "lesson_knowledge"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     skill: Mapped[str] = mapped_column(String(50), nullable=False, index=True)

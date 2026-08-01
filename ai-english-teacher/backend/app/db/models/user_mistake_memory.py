@@ -17,9 +17,7 @@ class UserMistakeMemory(TimestampMixin, Base):
 
     __tablename__ = "user_mistake_memory"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -30,8 +28,6 @@ class UserMistakeMemory(TimestampMixin, Base):
     example_text: Mapped[str] = mapped_column(Text, nullable=False)
     correction: Mapped[str] = mapped_column(Text, nullable=False)
     occurrence_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    last_seen_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="mistake_memories")

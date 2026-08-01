@@ -19,6 +19,8 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
+        # On Neon/managed Postgres, enable the extension in the dashboard if the
+        # migration role lacks CREATE EXTENSION — IF NOT EXISTS is a no-op when present.
         op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
 
