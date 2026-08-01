@@ -2,6 +2,19 @@ name: Check Bundle Size
 on:
   pull_request:
     branches: [main]
+    paths:
+      # Amplify docs site only — skip backend-only PRs (e.g. ai-english-teacher/**)
+      - 'src/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'next.config.mjs'
+      - 'mdx-components.tsx'
+      - 'public/**'
+      - 'redirects.json'
+      - 'tasks/**'
+      - '.github/workflows/check_bundle_size.yml'
+      - '.github/workflows/scripts/check_bundle_size.js'
+      - '.github/actions/**'
 jobs:
   checkBundleSizeChange:
     permissions:
