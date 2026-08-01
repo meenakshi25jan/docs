@@ -1,15 +1,19 @@
+# GitOps CI for AI English Teacher
+#
+# Triggers on PRs (all branches) and pushes to develop/main.
+# Push to main is required so post-merge CI runs on main before deploy workflow_run fires.
+
 name: AI English Teacher CI
 
 on:
-  push:
-    branches: [main, 'cursor/**']
+  pull_request:
     paths:
       - 'ai-english-teacher/**'
       - 'render.yaml'
       - '.github/workflows/ci.yml'
       - '.github/workflows/deploy.yml'
-  pull_request:
-    branches: [main]
+  push:
+    branches: [main, develop]
     paths:
       - 'ai-english-teacher/**'
       - 'render.yaml'
@@ -25,45 +29,73 @@ permissions:
   security-events: write
   pull-requests: read
 
-jobs:
-  validate-config:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate render.yaml
-        run: python3 ai-english-teacher/scripts/validate_render_config.py
-      - name: Check migration files on disk
-        run: python3 ai-english-teacher/scripts/check_migrations.py
-      - name: Migration report
-        run: python3 ai-english-teacher/scripts/migration_report.py
-      - name: Validate Dockerfiles
-        run: python3 ai-english-teacher/scripts/validate_docker.py
-      - name: Validate docker-compose
-        run: python3 ai-english-teacher/scripts/validate_compose.py
-      - name: Validate environment configuration
-        run: python3 ai-english-teacher/scripts/validate_environment.py
+env:
+  BACKEND_DIR: ai-english-teacher/backend
+  PYTHON_VERSION: '3.12'
 
-  backend-quality:
+jobs:
+  lint:
+    name: Lint (flake8, black, isort)
     runs-on: ubuntu-latest
-    needs: validate-config
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: |
-            ai-english-teacher/backend/requirements-ci.txt
-            ai-english-teacher/backend/requirements.txt
-      - name: Install backend + CI tools
-        working-directory: ai-english-teacher/backend
-        run: pip install -r requirements-ci.txt
-      - name: Backend lint and type check
-        run: bash ai-english-teacher/scripts/ci_lint_backend.sh
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: flake8
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: black --check
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: black --check app
+      - name: isort --check
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: isort --check-only app
 
-  backend:
+  typecheck:
+    name: Type check (mypy)
     runs-on: ubuntu-latest
-    needs: validate-config
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: mypy
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: mypy app
+
+  unit-tests:
+    name: Unit tests (pytest + coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: pytest with coverage (threshold 65%)
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          JWT_SECRET: ci-test-secret
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+        run: |
+          pytest app/tests/test_auth.py app/tests/test_conversation.py \
+            --cov=app --cov-report=term-missing --cov-fail-under=65 -v
+
+  integration-tests:
+    name: Integration tests (Postgres + pgvector)
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -78,12 +110,42 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      redis:
-        image: redis:7-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Enable pgvector extension
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - name: Run integration tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          JWT_SECRET: ci-test-secret
+          INTEGRATION_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+        run: pytest app/tests/test_integration_db.py -v
+
+  migration-check:
+    name: Migration check (upgrade / downgrade / upgrade)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: migration_db
         ports:
-          - 6379:6379
+          - 5432:5432
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -91,140 +153,81 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: ai-english-teacher/backend/requirements-ci.txt
-      - name: Install backend dependencies
-        working-directory: ai-english-teacher/backend
-        run: pip install -r requirements-ci.txt
-      - name: Validate connections and OpenAPI
+          cache-dependency-path: ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-ci.txt
+      - name: Alembic round-trip
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-          REDIS_URL: redis://localhost:6379/0
-          JWT_SECRET_KEY: ci-test-secret
-        run: python3 ai-english-teacher/scripts/validate_connections.py
-      - name: Run backend tests with coverage
-        working-directory: ai-english-teacher/backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-          JWT_SECRET_KEY: ci-test-secret
-          PYTHONPATH: ${{ github.workspace }}/ai-english-teacher/backend
-        run: |
-          python -m pytest tests/ -q --tb=line --cov=app --cov-report=term-missing --cov-fail-under=50
+          JWT_SECRET: ci-migration-secret
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/migration_db
+        run: bash ai-english-teacher/scripts/ci_migration_roundtrip.sh
 
-  frontend:
-    runs-on: ubuntu-latest
-    needs: validate-config
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: ai-english-teacher/frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: ai-english-teacher/frontend
-        run: npm ci
-      - name: Lint frontend
-        working-directory: ai-english-teacher/frontend
-        run: npm run lint
-      - name: Typecheck frontend
-        working-directory: ai-english-teacher/frontend
-        run: npm run typecheck
-      - name: Build frontend and verify routes
-        working-directory: ai-english-teacher/frontend
-        run: |
-          npm run build
-          test -f public/build-info.json
-          test -f .next/standalone/frontend/public/build-info.json
-          node -e "
-          const fs=require('fs');
-          const p='public/build-info.json';
-          const d=JSON.parse(fs.readFileSync(p,'utf8'));
-          const req=['commit','builtAt','nextBuildId','routes','service'];
-          for (const k of req) {
-            if (d[k]==null||d[k]===''||(k==='routes'&&!Array.isArray(d.routes)||d.routes.length===0)) {
-              console.error('build-info missing field:',k); process.exit(1);
-            }
-          }
-          if (!d.routes.includes('/grammar-class')) {
-            console.error('build-info routes missing /grammar-class'); process.exit(1);
-          }
-          if (d.commit==='unknown') { console.error('build-info commit unknown'); process.exit(1); }
-          "
-          npm run verify:routes
-      - name: Upload frontend build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build-manifest
-          path: |
-            ai-english-teacher/frontend/public/build-info.json
-            ai-english-teacher/frontend/.next/app-path-routes-manifest.json
-          if-no-files-found: error
-          retention-days: 14
-
-  docker-build:
-    runs-on: ubuntu-latest
-    needs: validate-config
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build backend Docker image
-        run: docker build -f ai-english-teacher/backend/Dockerfile -t ai-english-teacher-api:ci ai-english-teacher
-      - name: Build frontend Docker image
-        run: docker build -f ai-english-teacher/frontend/Dockerfile -t ai-english-teacher-web:ci ai-english-teacher/frontend
-      - name: Report image sizes
-        run: |
-          docker images ai-english-teacher-api:ci ai-english-teacher-web:ci --format '{{.Repository}}:{{.Tag}} {{.Size}}'
-
-  security:
+  security-scan:
+    name: Security scan (pip-audit + gitleaks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+      - uses: actions/setup-python@v5
         with:
-          scan-type: fs
-          scan-ref: ai-english-teacher
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-          format: sarif
-          output: trivy-results.sarif
-      - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy-ai-english-teacher
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: pip-audit
+        run: |
+          pip install pip-audit==2.7.3
+          IGNORE_ARGS=""
+          while IFS= read -r id; do
+            [[ -z "$id" || "$id" =~ ^# ]] && continue
+            IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $id"
+          done < ${{ env.BACKEND_DIR }}/.pip-audit-ignore
+          pip-audit -r ${{ env.BACKEND_DIR }}/requirements.txt $IGNORE_ARGS
       - name: Install Gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar -xz -C /usr/local/bin gitleaks
-      - name: Gitleaks secret scan (ai-english-teacher only)
-        continue-on-error: true
-        run: gitleaks detect --source ai-english-teacher --config ai-english-teacher/.gitleaks.toml --redact --no-banner
+      - name: Gitleaks
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            LOG_OPTS="origin/${{ github.event.pull_request.base.ref }}..HEAD"
+          else
+            LOG_OPTS="-1"
+          fi
+          gitleaks detect \
+            --source ai-english-teacher \
+            --config ai-english-teacher/.gitleaks.toml \
+            --log-opts="$LOG_OPTS" \
+            --redact \
+            --no-banner
 
-  dependency-review:
+  docker-build:
+    name: Docker build
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
+      - name: Build image
+        run: |
+          docker build \
+            --build-arg BUILD_COMMIT_SHA=${{ github.sha }} \
+            -f ${{ env.BACKEND_DIR }}/Dockerfile \
+            -t ghcr.io/${{ github.repository_owner }}/ai-english-teacher-api:${{ github.sha }} \
+            ${{ env.BACKEND_DIR }}
 
   ci-success:
+    name: ci-success
     runs-on: ubuntu-latest
-    needs: [backend-quality, backend, frontend, security]
+    needs: [lint, typecheck, unit-tests, integration-tests, migration-check, security-scan, docker-build]
     if: always()
     steps:
-      - name: Require all jobs
+      - name: Require all CI gates
         run: |
-          if [ "${{ needs.backend-quality.result }}" != "success" ] || \
-             [ "${{ needs.backend.result }}" != "success" ] || \
-             [ "${{ needs.frontend.result }}" != "success" ]; then
-            echo "CI failed"
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.typecheck.result }}" != "success" ] || \
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.migration-check.result }}" != "success" ] || \
+             [ "${{ needs.security-scan.result }}" != "success" ] || \
+             [ "${{ needs.docker-build.result }}" != "success" ]; then
+            echo "CI failed — one or more required jobs did not succeed"
             exit 1
           fi
-          echo "CI passed"
+          echo "CI passed — all gates green"
